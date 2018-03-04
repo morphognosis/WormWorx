@@ -1,1 +1,1 @@
-java -Djava.library.path=../lib -jar ../bin/wormworx.jar %*
+java -Djava.library.path=../lib -jar ../bin/wormworx.jar -display -numNeighborhoods 6 -neighborhoodInitialDimension 3 -neighborhoodDimensionStride 0 -neighborhoodDimensionMultiplier 1 -epochIntervalStride 1 -epochIntervalMultiplier 1

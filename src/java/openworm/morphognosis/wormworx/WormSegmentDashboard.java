@@ -77,7 +77,7 @@ public class WormSegmentDashboard extends JFrame
       saltString = wormSegment.sensors[22] + "," + wormSegment.sensors[23] + "," +
                    wormSegment.sensors[24] + "," + wormSegment.sensors[25];
       setSalt(saltString);
-      switch (wormSegment.response)
+      switch (wormSegment.responses[0])
       {
       case Worm.MOVE_NW:
          setResponse("Move NW");

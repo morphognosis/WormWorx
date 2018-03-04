@@ -278,8 +278,8 @@ public class Display extends JFrame
          imageGraphics.setColor(Color.gray);
          for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
          {
-            x  = worm.segments[i].x;
-            y  = worm.segments[i].y;
+            x  = worm.segments[i].x[0];
+            y  = worm.segments[i].y[0];
             x2 = (int)(cellWidth * (double)x);
             y2 = (int)(cellHeight * (double)(height - (y + 1)));
             imageGraphics.fillRect(x2, y2, (int)cellWidth, (int)cellHeight);
@@ -326,8 +326,8 @@ public class Display extends JFrame
             {
                for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
                {
-                  cx = worm.segments[i].x;
-                  cy = worm.segments[i].y;
+                  cx = worm.segments[i].x[0];
+                  cy = worm.segments[i].y[0];
                   if ((cx == x) && (cy == y))
                   {
                      if (wormSegmentDashboards[i].isVisible())
@@ -410,7 +410,6 @@ public class Display extends JFrame
          add(panel, BorderLayout.NORTH);
          panel       = new JPanel();
          messageText = new JTextField("", 40);
-         messageText.setEditable(false);
          panel.add(messageText);
          add(panel, BorderLayout.SOUTH);
          steps = 0;

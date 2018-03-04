@@ -44,10 +44,10 @@ public class Main
    public static final String Usage =
       "Usage:\n" +
       "  New run:\n" +
-      "    java openworm.morphognosis.worm_movement.Main\n" +
+      "    java openworm.morphognosis.wormworx.Main\n" +
       "      -steps <steps> | -display\n" +
       "     [-foodColor <red | green | blue> (default=red)]\n" +
-      "     [-driver <metamorphDB | metamorphNN | wormsim> (worm driver: default=wormsim)]\n" +
+      "     [-driver <metamorphDB | metamorphWekaNN | metamorphH2ONN | wormsim> (worm driver: default=wormsim)]\n" +
       "     [-numNeighborhoods <quantity> (default=" + Morphognostic.DEFAULT_NUM_NEIGHBORHOODS + ")]\n" +
       "     [-neighborhoodInitialDimension <quantity> (default=" + Morphognostic.DEFAULT_NEIGHBORHOOD_INITIAL_DIMENSION + ")]\n" +
       "     [-neighborhoodDimensionStride <quantity> (default=" + Morphognostic.DEFAULT_NEIGHBORHOOD_DIMENSION_STRIDE + ")]\n" +
@@ -57,7 +57,7 @@ public class Main
       "     [-randomSeed <random number seed> (default=" + DEFAULT_RANDOM_SEED + ")]\n" +
       "     [-save <file name>]\n" +
       "  Resume run:\n" +
-      "    java openworm.morphognosis.worm_movement.Main\n" +
+      "    java openworm.morphognosis.wormworx.Main\n" +
       "      -steps <steps> | -display\n" +
       "      -load <file name>\n" +
       "     [-foodColor <red | green | blue> (default=red)]\n" +
@@ -379,9 +379,13 @@ public class Main
             {
                driver = Worm.DRIVER_TYPE.METAMORPH_DB.getValue();
             }
-            else if (args[i].equals("metamorphNN"))
+            else if (args[i].equals("metamorphWekaNN"))
             {
-               driver = Worm.DRIVER_TYPE.METAMORPH_NN.getValue();
+               driver = Worm.DRIVER_TYPE.METAMORPH_WEKA_NN.getValue();
+            }
+            else if (args[i].equals("metamorphH2ONN"))
+            {
+               driver = Worm.DRIVER_TYPE.METAMORPH_H2O_NN.getValue();
             }
             else if (args[i].equals("wormsim"))
             {
@@ -685,16 +689,16 @@ public class Main
 
       // Set worm driver.
       main.worm.driver = driver;
-      if (driver == Worm.DRIVER_TYPE.METAMORPH_NN.getValue())
+      if (driver == Worm.DRIVER_TYPE.METAMORPH_WEKA_NN.getValue())
       {
          try
          {
-            System.out.println("Training metamorph NN...");
-            main.worm.createMetamorphNN();
+            System.out.println("Training metamorph Weka NN...");
+            main.worm.createMetamorphWekaNN();
          }
          catch (Exception e)
          {
-            System.err.println("Cannot train metamorph NN: " + e.getMessage());
+            System.err.println("Cannot train metamorph Weka NN: " + e.getMessage());
          }
       }
 

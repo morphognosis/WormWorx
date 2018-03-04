@@ -90,7 +90,7 @@ public class WormDashboard extends JFrame
 
 
    // Driver panel.
-   class DriverPanel extends JPanel implements ItemListener
+   class DriverPanel extends JPanel implements ItemListener, ActionListener
    {
       private static final long serialVersionUID = 0L;
 
@@ -103,6 +103,7 @@ public class WormDashboard extends JFrame
       JButton  raiseSurfaceButton;
       JButton  lowerSurfaceButton;
       Checkbox trainNNcheck;
+      JButton  saveNNdataButton;
 
       // Constructor.
       public DriverPanel()
@@ -117,17 +118,21 @@ public class WormDashboard extends JFrame
          driverChoice = new Choice();
          driverPanel.add(driverChoice);
          driverChoice.add("metamorphDB");
-         driverChoice.add("metamorphNN");
+         driverChoice.add("metamorphWekaNN");
+         driverChoice.add("metamorphH2ONN");
          driverChoice.add("wormsim");
          driverChoice.addItemListener(this);
          JPanel trainNNpanel = new JPanel();
          trainNNpanel.setLayout(new FlowLayout(FlowLayout.LEFT));
          add(trainNNpanel, BorderLayout.SOUTH);
-         trainNNpanel.add(new JLabel("Train NN:"));
+         trainNNpanel.add(new JLabel("Train Weka NN:"));
          trainNNcheck = new Checkbox();
          trainNNcheck.setState(false);
          trainNNcheck.addItemListener(this);
          trainNNpanel.add(trainNNcheck);
+         saveNNdataButton = new JButton("Save NN dataset");
+         saveNNdataButton.addActionListener(this);
+         trainNNpanel.add(saveNNdataButton);
       }
 
 
@@ -147,13 +152,32 @@ public class WormDashboard extends JFrame
             {
                try
                {
-                  worm.createMetamorphNN();
+                  worm.createMetamorphWekaNN();
                }
                catch (Exception e)
                {
-                  display.controls.messageText.setText("Cannot train metamorph NN: " + e.getMessage());
+                  display.controls.messageText.setText("Cannot train metamorph Weka NN: " + e.getMessage());
                }
                trainNNcheck.setState(false);
+            }
+            return;
+         }
+      }
+
+
+      // Step button listener.
+      public void actionPerformed(ActionEvent evt)
+      {
+         if (evt.getSource() == (Object)saveNNdataButton)
+         {
+            try
+            {
+               worm.saveMetamorphNNtrainingData();
+               display.controls.messageText.setText("Metamorph NN dataset saved in file " + Worm.NN_DATASET_SAVE_FILE_NAME);
+            }
+            catch (Exception e)
+            {
+               display.controls.messageText.setText("Cannot save metamorph NN dataset: " + e.getMessage());
             }
             return;
          }
