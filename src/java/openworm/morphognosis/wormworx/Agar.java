@@ -18,14 +18,23 @@ import java.io.PrintWriter;
 public class Agar
 {
    // Dimensions.
-   public static final Dimension SIZE = new Dimension(1500, 750);
+   public static Dimension SIZE = new Dimension(1500, 750);
 
    // Cell grid dimensions.
    public static final Dimension GRID_SIZE = new Dimension(100, 50);
 
    // Cell size.
-   public static final float CELL_WIDTH  = (float)SIZE.width / (float)GRID_SIZE.width;
-   public static final float CELL_HEIGHT = (float)SIZE.height / (float)GRID_SIZE.height;
+   public static float CELL_WIDTH  = (float)SIZE.width / (float)GRID_SIZE.width;
+   public static float CELL_HEIGHT = (float)SIZE.height / (float)GRID_SIZE.height;
+
+   // Resize dimensions.
+   public static void resize(int width, int height)
+   {
+      SIZE        = new Dimension(width, height);
+      CELL_WIDTH  = (float)SIZE.width / (float)GRID_SIZE.width;
+      CELL_HEIGHT = (float)SIZE.height / (float)GRID_SIZE.height;
+   }
+
 
    // Cells.
    // See SectorDisplay.EMPTY_CELL_VALUE.

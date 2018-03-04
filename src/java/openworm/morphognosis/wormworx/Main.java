@@ -26,6 +26,7 @@
 
 package openworm.morphognosis.wormworx;
 
+import java.awt.Dimension;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -45,7 +46,7 @@ public class Main
       "Usage:\n" +
       "  New run:\n" +
       "    java openworm.morphognosis.wormworx.Main\n" +
-      "      -steps <steps> | -display\n" +
+      "      -steps <steps> | -display [width height]\n" +
       "     [-foodColor <red | green | blue> (default=red)]\n" +
       "     [-driver <metamorphDB | metamorphWekaNN | metamorphH2ONN | wormsim> (worm driver: default=wormsim)]\n" +
       "     [-numNeighborhoods <quantity> (default=" + Morphognostic.DEFAULT_NUM_NEIGHBORHOODS + ")]\n" +
@@ -58,7 +59,7 @@ public class Main
       "     [-save <file name>]\n" +
       "  Resume run:\n" +
       "    java openworm.morphognosis.wormworx.Main\n" +
-      "      -steps <steps> | -display\n" +
+      "      -steps <steps> | -display [width height]\n" +
       "      -load <file name>\n" +
       "     [-foodColor <red | green | blue> (default=red)]\n" +
       "     [-driver <metamorphDB | metamorphNN | wormsim> (default=wormsim)]\n" +
@@ -335,6 +336,24 @@ public class Main
          if (args[i].equals("-display"))
          {
             display = true;
+            if (args.length > (i + 2))
+            {
+               if (!args[i + 1].startsWith("-"))
+               {
+                  try
+                  {
+                     int width  = Integer.parseInt(args[i + 1]);
+                     int height = Integer.parseInt(args[i + 2]);
+                     Agar.resize(width, height);
+                  }
+                  catch (NumberFormatException e) {
+                     System.err.println("Invalid display dimensions option");
+                     System.err.println(Usage);
+                     System.exit(1);
+                  }
+                  i += 2;
+               }
+            }
             continue;
          }
          if (args[i].equals("-foodColor"))
