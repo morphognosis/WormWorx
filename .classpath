@@ -4,5 +4,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/weka.jar"/>
 	<classpathentry kind="lib" path="lib/morphognosis.jar"/>
+	<classpathentry kind="lib" path="lib/h2o-genmodel.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

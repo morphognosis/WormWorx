@@ -7,6 +7,15 @@ Setup:
 3. Build the wormsim_jni library in the jni directory.
 4. Run .sh or .bat commands in the work directory
 
+Notes on using H2O (https://www.h2o.ai) model:
+1. Use worm dashboard to export training csv file after creating metamorphs to learn.
+2. Train wormworx_model using H2O and export h2o-genmodel.jar.
+3. Copy h2o-genmodel.jar to lib directory.
+4. Copy wormworx_model.java to work directory.
+5. Build.
+6. Select metamorphH2ONN as driver on worm dashboard.
+7. Run.
+
 References:
 
 Boyle, Berri and Cohen, "Gait modulation in C. elegans: an integrated neuromechanical model"

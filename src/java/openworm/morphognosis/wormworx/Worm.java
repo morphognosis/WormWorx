@@ -9,6 +9,8 @@ import java.awt.geom.Point2D;
 import java.io.*;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+
+import hex.genmodel.tools.WormWorxPredict;
 import morphognosis.Metamorph;
 import morphognosis.Morphognostic;
 import morphognosis.Orientation;
@@ -70,6 +72,9 @@ public class Worm
       }
    }
    int driver;
+
+   // H2O morphognostic classification.
+   WormWorxPredict H2Opredict;
 
    // Found food?
    boolean foundFood;
@@ -623,6 +628,8 @@ public class Worm
       wormVerts           = new Point2D.Double[NBAR];
       segmentSimPositions = new Point[NUM_SEGMENTS];
       getSegmentSimPositions();
+      H2Opredict = new WormWorxPredict();
+      H2Opredict.initPredict("wormworx_model");
       foundFood   = false;
       wormsimLock = new Object();
    }
@@ -711,6 +718,7 @@ public class Worm
       if (driver == DRIVER_TYPE.WORMSIM.getValue())
       {
          reset();
+         return;
       }
    }
 
@@ -999,7 +1007,7 @@ public class Worm
    }
 
 
-   // Get metamorph DB response.
+   // Get metamorph DB response distances.
    float[] metamorphDBresponse(Morphognostic morphognostic)
    {
       float[] responseDistances = new float[NUM_RESPONSES];
@@ -1033,22 +1041,23 @@ public class Worm
    }
 
 
-   // Get metamorph Weka neural network response.
+   // Get metamorph Weka neural network response probabilities.
    float[] metamorphWekaNNresponse(Morphognostic morphognostic)
    {
       return(classifyMorphognostic(morphognostic));
    }
 
 
-   // Get metamorph H2O neural network response.
+   // Get metamorph H2O neural network response probabilities.
    float[] metamorphH2ONNresponse(Morphognostic morphognostic)
    {
-      float[] responseProbabilities = new float[NUM_RESPONSES];
-      for (int i = 0; i < NUM_RESPONSES; i++)
-      {
-         responseProbabilities[i] = 0.0f;
+      try {
+         return(H2Opredict.predict(morphognostic2csv(morphognostic)));
       }
-      return(responseProbabilities);
+      catch (Exception e) {
+         System.err.println("H2O prediction failed: " + e.getMessage());
+         return(null);
+      }
    }
 
 
@@ -1279,34 +1288,45 @@ public class Worm
       PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
       for (Metamorph m : metamorphs)
       {
-         for (int i = 0; i < m.morphognostic.NUM_NEIGHBORHOODS; i++)
+         String csv = morphognostic2csv(m.morphognostic);
+         if (m.responseName.isEmpty())
          {
-            int n = m.morphognostic.neighborhoods.get(i).sectors.length;
-            for (int x = 0; x < n; x++)
+            csv += (m.response + "");
+         }
+         else
+         {
+            csv += m.responseName;
+         }
+         writer.println(csv);
+      }
+      output.close();
+   }
+
+
+   // Flatten morphognostic to csv string.
+   public String morphognostic2csv(Morphognostic morphognostic)
+   {
+      String output = "";
+
+      for (int i = 0; i < morphognostic.NUM_NEIGHBORHOODS; i++)
+      {
+         int n = morphognostic.neighborhoods.get(i).sectors.length;
+         for (int x = 0; x < n; x++)
+         {
+            for (int y = 0; y < n; y++)
             {
-               for (int y = 0; y < n; y++)
+               Morphognostic.Neighborhood.Sector s = morphognostic.neighborhoods.get(i).sectors[x][y];
+               for (int d = 0; d < morphognostic.eventDimensions; d++)
                {
-                  Morphognostic.Neighborhood.Sector s = m.morphognostic.neighborhoods.get(i).sectors[x][y];
-                  for (int d = 0; d < m.morphognostic.eventDimensions; d++)
+                  for (int j = 0; j < s.typeDensities[d].length; j++)
                   {
-                     for (int j = 0; j < s.typeDensities[d].length; j++)
-                     {
-                        writer.print(s.typeDensities[d][j] + ",");
-                     }
+                     output += (s.typeDensities[d][j] + ",");
                   }
                }
             }
          }
-         if (m.responseName.isEmpty())
-         {
-            writer.println(m.response + "");
-         }
-         else
-         {
-            writer.println(m.responseName);
-         }
       }
-      output.close();
+      return(output);
    }
 
 
