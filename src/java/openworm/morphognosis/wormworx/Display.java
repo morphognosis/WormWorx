@@ -324,12 +324,14 @@ public class Display extends JFrame
             if ((x >= 0) && (x < width) &&
                 (y >= 0) && (y < height))
             {
+               boolean segmentSelected = false;
                for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
                {
                   cx = worm.segments[i].x[0];
                   cy = worm.segments[i].y[0];
                   if ((cx == x) && (cy == y))
                   {
+                     segmentSelected = true;
                      if (wormSegmentDashboards[i].isVisible())
                      {
                         wormSegmentDashboards[i].close();
@@ -340,22 +342,36 @@ public class Display extends JFrame
                      }
                   }
                }
-               boolean segmentVisible = false;
-               for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
+               if (!segmentSelected)
                {
-                  if (wormSegmentDashboards[i].isVisible())
+                  for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
                   {
-                     segmentVisible = true;
-                     break;
+                     if (wormSegmentDashboards[i].isVisible())
+                     {
+                        wormSegmentDashboards[i].close();
+                     }
                   }
-               }
-               if (segmentVisible)
-               {
-                  wormDashboard.open();
+                  wormDashboard.close();
                }
                else
                {
-                  wormDashboard.close();
+                  boolean segmentVisible = false;
+                  for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
+                  {
+                     if (wormSegmentDashboards[i].isVisible())
+                     {
+                        segmentVisible = true;
+                        break;
+                     }
+                  }
+                  if (segmentVisible)
+                  {
+                     wormDashboard.open();
+                  }
+                  else
+                  {
+                     wormDashboard.close();
+                  }
                }
             }
 

@@ -4,7 +4,7 @@
 # 2. ./configure CFLAGS=-fPIC CXXFLAGS=-fPIC; make; sudo make install
 # Fix include /usr/lib/jvm/... paths below to jni.h and related header files.
 
-all: wormsim_jni
+all: libwormsim_jni
 
 CC=gcc
 CXX=$(CC) -O2 -fPIC -I /usr/lib/jvm/java-1.8.0-openjdk-amd64/include -I /usr/lib/jvm/java-1.8.0-openjdk-amd64/include/linux -I sundials-2.3.0/src/ida -I sundials-2.3.0/include -I sundials-2.3.0/src -Wno-deprecated
@@ -12,8 +12,8 @@ LIBS=-L /usr/local/lib -l sundials_ida -l sundials_cvode -l sundials_nvecserial 
 SRCS=$(shell ls *.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
 
-wormsim_jni: $(OBJS)
-	$(CXX) $(OBJS) $(LIBS) -W -shared -o ../lib/wormsim_jni.so
+libwormsim_jni: $(OBJS)
+	$(CXX) $(OBJS) $(LIBS) -W -shared -o ../lib/libwormsim_jni.so
 
 clean:
 	rm -rf $(TARGET) $(OBJS)
