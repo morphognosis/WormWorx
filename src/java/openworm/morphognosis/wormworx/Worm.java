@@ -73,14 +73,18 @@ public class Worm
    }
    int driver;
 
+   // SMB muscle amplfier overrides.
+   public static double DORSAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE  = -1.0;
+   public static double VENTRAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE = -1.0;
+
    // H2O morphognostic classification.
-   WormWorxPredict H2Opredict;
+   public WormWorxPredict H2Opredict;
 
    // Found food?
-   boolean foundFood;
+   public boolean foundFood;
 
    // Simulator synchronization.
-   Object wormsimLock;
+   public Object wormsimLock;
 
    // Neural network dataset save file name.
    public static final String NN_DATASET_SAVE_FILE_NAME = "metamorphs.csv";
@@ -825,20 +829,30 @@ public class Worm
       // Step simulation?
       if (driver == DRIVER_TYPE.WORMSIM.getValue())
       {
+         double dorsal  = 1.0;
+         double ventral = 1.0;
          switch (agar.currentSalty)
          {
          case Agar.RED_FOOD:
-            Wormsim.overrideSMBmuscleAmplifiers(1.0, 1.1);
+            ventral = 1.1;
             break;
 
          case Agar.GREEN_FOOD:
-            Wormsim.overrideSMBmuscleAmplifiers(1.0, 1.0);
             break;
 
          case Agar.BLUE_FOOD:
-            Wormsim.overrideSMBmuscleAmplifiers(1.5, 1.0);
+            dorsal = 1.5;
             break;
          }
+         if (DORSAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE != -1.0)
+         {
+            dorsal = DORSAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE;
+         }
+         if (VENTRAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE != -1.0)
+         {
+            ventral = VENTRAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE;
+         }
+         Wormsim.overrideSMBmuscleAmplifiers(dorsal, ventral);
          synchronized (wormsimLock)
          {
             Wormsim.step(0.0);
@@ -902,6 +916,7 @@ public class Worm
          for (int j = 22; j < 26; j++)
          {
             sensors[j] -= saltMin;
+            if (sensors[j] > 2.0f) { sensors[j] = 2.0f; }
          }
 
          // Cycle segment.

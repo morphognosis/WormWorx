@@ -26,15 +26,17 @@
 
 package openworm.morphognosis.wormworx;
 
-import java.awt.Dimension;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.security.SecureRandom;
 import javax.swing.UIManager;
 
 import morphognosis.Morphognostic;
+import morphognosis.Utility;
 
 public class Main
 {
@@ -46,9 +48,11 @@ public class Main
       "Usage:\n" +
       "  New run:\n" +
       "    java openworm.morphognosis.wormworx.Main\n" +
-      "      -steps <steps> | -display [width height]\n" +
+      "      -steps <steps> | -display\n" +
+      "     [-agarSize <width> <height> (default=" + Agar.SIZE.width + " " + Agar.SIZE.height + ")]\n" +
       "     [-foodColor <red | green | blue> (default=red)]\n" +
       "     [-driver <metamorphDB | metamorphWekaNN | metamorphH2ONN | wormsim> (worm driver: default=wormsim)]\n" +
+      "     [-wormsimSMBmuscleAmplifierOverrides <dorsal> <ventral> (defaults=1.0)]\n" +
       "     [-numNeighborhoods <quantity> (default=" + Morphognostic.DEFAULT_NUM_NEIGHBORHOODS + ")]\n" +
       "     [-neighborhoodInitialDimension <quantity> (default=" + Morphognostic.DEFAULT_NEIGHBORHOOD_INITIAL_DIMENSION + ")]\n" +
       "     [-neighborhoodDimensionStride <quantity> (default=" + Morphognostic.DEFAULT_NEIGHBORHOOD_DIMENSION_STRIDE + ")]\n" +
@@ -59,10 +63,11 @@ public class Main
       "     [-save <file name>]\n" +
       "  Resume run:\n" +
       "    java openworm.morphognosis.wormworx.Main\n" +
-      "      -steps <steps> | -display [width height]\n" +
+      "      -steps <steps> | -display\n" +
       "      -load <file name>\n" +
       "     [-foodColor <red | green | blue> (default=red)]\n" +
       "     [-driver <metamorphDB | metamorphNN | wormsim> (default=wormsim)]\n" +
+      "     [-wormsimSMBmuscleAmplifierOverrides <dorsal> <ventral> (defaults=1.0)]\n" +
       "     [-randomSeed <random number seed>]\n" +
       "     [-save <file name>]\n" +
       "Exit codes:\n" +
@@ -171,7 +176,11 @@ public class Main
    // Save.
    public void save(FileOutputStream output) throws IOException
    {
-      // Save cells.
+      // Save agar.
+      PrintWriter writer = new PrintWriter(output);
+
+      Utility.saveInt(writer, Agar.SIZE.width);
+      Utility.saveInt(writer, Agar.SIZE.height);
       agar.save(output);
 
       // Save worm.
@@ -200,7 +209,12 @@ public class Main
    // Load.
    public void load(FileInputStream input) throws IOException
    {
-      // Load cells.
+      // Load agar.
+      DataInputStream reader = new DataInputStream(input);
+      int             width  = Utility.loadInt(reader);
+      int             height = Utility.loadInt(reader);
+
+      Agar.resize(width, height);
       agar = new Agar(foodColor);
       agar.load(input);
 
@@ -336,23 +350,62 @@ public class Main
          if (args[i].equals("-display"))
          {
             display = true;
+            continue;
+         }
+         if (args[i].equals("-agarSize"))
+         {
             if (args.length > (i + 2))
             {
-               if (!args[i + 1].startsWith("-"))
+               try
                {
-                  try
+                  int width  = Integer.parseInt(args[i + 1]);
+                  int height = Integer.parseInt(args[i + 2]);
+                  if ((width <= 0) || (height <= 0))
                   {
-                     int width  = Integer.parseInt(args[i + 1]);
-                     int height = Integer.parseInt(args[i + 2]);
-                     Agar.resize(width, height);
-                  }
-                  catch (NumberFormatException e) {
-                     System.err.println("Invalid display dimensions option");
+                     System.err.println("Invalid agar size option");
                      System.err.println(Usage);
                      System.exit(1);
                   }
-                  i += 2;
+                  Agar.resize(width, height);
                }
+               catch (NumberFormatException e) {
+                  System.err.println("Invalid agar size option");
+                  System.err.println(Usage);
+                  System.exit(1);
+               }
+               i      += 2;
+               gotParm = true;
+            }
+            else
+            {
+               System.err.println("Invalid agar size option");
+               System.err.println(Usage);
+               System.exit(1);
+            }
+            continue;
+         }
+         if (args[i].equals("-wormsimSMBmuscleAmplifierOverrides"))
+         {
+            if (args.length > (i + 2))
+            {
+               try
+               {
+                  Worm.DORSAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE  = Double.parseDouble(args[i + 1]);
+                  Worm.VENTRAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE = Double.parseDouble(args[i + 2]);
+               }
+               catch (NumberFormatException e) {
+                  System.err.println("Invalid SMB muscle amplifier override option");
+                  System.err.println(Usage);
+                  System.exit(1);
+               }
+               i      += 2;
+               gotParm = true;
+            }
+            else
+            {
+               System.err.println("Invalid SMB muscle amplifier override option");
+               System.err.println(Usage);
+               System.exit(1);
             }
             continue;
          }
