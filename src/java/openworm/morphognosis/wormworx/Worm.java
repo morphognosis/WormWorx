@@ -634,15 +634,18 @@ public class Worm
       segmentSimPositions = new Point[NUM_SEGMENTS];
       getSegmentSimPositions();
       H2Opredict        = new WormWorxPredict();
+      foundFood         = false;
+      wormsimLock       = new Object();
       H2OresponseLabels = H2Opredict.initPredict("wormworx_model");
       if (H2OresponseLabels == null)
       {
          System.err.println("Cannot initialize H2O neural network");
          return(false);
       }
-      foundFood   = false;
-      wormsimLock = new Object();
-      return(true);
+      else
+      {
+         return(true);
+      }
    }
 
 
