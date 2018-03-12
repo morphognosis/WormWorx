@@ -639,7 +639,6 @@ public class Worm
       H2OresponseLabels = H2Opredict.initPredict("wormworx_model");
       if (H2OresponseLabels == null)
       {
-         System.err.println("Cannot initialize H2O neural network");
          return(false);
       }
       else
