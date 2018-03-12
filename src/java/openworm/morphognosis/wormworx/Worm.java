@@ -79,6 +79,7 @@ public class Worm
 
    // H2O morphognostic classification.
    public WormWorxPredict H2Opredict;
+   public                 String[] H2OresponseLabels;
 
    // Found food?
    public boolean foundFood;
@@ -619,7 +620,7 @@ public class Worm
 
 
    // Initialize.
-   void init(Agar agar, int randomSeed)
+   boolean init(Agar agar, int randomSeed)
    {
       this.agar       = agar;
       this.randomSeed = randomSeed;
@@ -632,10 +633,16 @@ public class Worm
       wormVerts           = new Point2D.Double[NBAR];
       segmentSimPositions = new Point[NUM_SEGMENTS];
       getSegmentSimPositions();
-      H2Opredict = new WormWorxPredict();
-      H2Opredict.initPredict("wormworx_model");
+      H2Opredict        = new WormWorxPredict();
+      H2OresponseLabels = H2Opredict.initPredict("wormworx_model");
+      if (H2OresponseLabels == null)
+      {
+         System.err.println("Cannot initialize H2O neural network");
+         return(false);
+      }
       foundFood   = false;
       wormsimLock = new Object();
+      return(true);
    }
 
 
@@ -1066,13 +1073,24 @@ public class Worm
    // Get metamorph H2O neural network response probabilities.
    float[] metamorphH2ONNresponse(Morphognostic morphognostic)
    {
+      float[] responseProbabilities = new float[NUM_RESPONSES];
+      for (int i = 0; i < responseProbabilities.length; i++)
+      {
+         responseProbabilities[i] = 0.0f;
+      }
       try {
-         return(H2Opredict.predict(morphognostic2csv(morphognostic)));
+         float[] p = H2Opredict.predict(morphognostic2csv(morphognostic) + ",STAY");
+         for (int i = 0; i < H2OresponseLabels.length; i++)
+         {
+            int j = getResponseValue(H2OresponseLabels[i]);
+            responseProbabilities[j] = p[i];
+         }
       }
       catch (Exception e) {
          System.err.println("H2O prediction failed: " + e.getMessage());
          return(null);
       }
+      return(responseProbabilities);
    }
 
 
@@ -1301,16 +1319,29 @@ public class Worm
          throw new IOException("Cannot open output file " + NN_DATASET_SAVE_FILE_NAME + ":" + e.getMessage());
       }
       PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
+      boolean     header = true;
       for (Metamorph m : metamorphs)
       {
          String csv = morphognostic2csv(m.morphognostic);
          if (m.responseName.isEmpty())
          {
-            csv += (m.response + "");
+            csv += ("," + m.response);
          }
          else
          {
-            csv += m.responseName;
+            csv += ("," + m.responseName);
+         }
+         if (header)
+         {
+            header = false;
+            int    j    = csv.split(",").length - 1;
+            String csv2 = "";
+            for (int i = 0; i < j; i++)
+            {
+               csv2 += ("c" + i + ",");
+            }
+            csv2 += "response";
+            writer.println(csv2);
          }
          writer.println(csv);
       }
@@ -1321,7 +1352,8 @@ public class Worm
    // Flatten morphognostic to csv string.
    public String morphognostic2csv(Morphognostic morphognostic)
    {
-      String output = "";
+      String  output    = "";
+      boolean skipComma = true;
 
       for (int i = 0; i < morphognostic.NUM_NEIGHBORHOODS; i++)
       {
@@ -1335,7 +1367,15 @@ public class Worm
                {
                   for (int j = 0; j < s.typeDensities[d].length; j++)
                   {
-                     output += (s.typeDensities[d][j] + ",");
+                     if (skipComma)
+                     {
+                        skipComma = false;
+                     }
+                     else
+                     {
+                        output += ",";
+                     }
+                     output += (s.typeDensities[d][j] + "");
                   }
                }
             }
@@ -1376,7 +1416,7 @@ public class Worm
    }
 
 
-   // Responses.
+   // Response names.
    public String getResponseName(int response)
    {
       switch (response)
@@ -1409,5 +1449,57 @@ public class Worm
          return("MOVE_SE");
       }
       return("");
+   }
+
+
+   // Response value from name.
+   public int getResponseValue(String name)
+   {
+      if (name.equals("MOVE_NW"))
+      {
+         return(MOVE_NW);
+      }
+
+      if (name.equals("MOVE_NORTH"))
+      {
+         return(MOVE_NORTH);
+      }
+
+      if (name.equals("MOVE_NE"))
+      {
+         return(MOVE_NE);
+      }
+
+      if (name.equals("MOVE_WEST"))
+      {
+         return(MOVE_WEST);
+      }
+
+      if (name.equals("STAY"))
+      {
+         return(STAY);
+      }
+
+      if (name.equals("MOVE_EAST"))
+      {
+         return(MOVE_EAST);
+      }
+
+      if (name.equals("MOVE_SW"))
+      {
+         return(MOVE_SW);
+      }
+
+      if (name.equals("MOVE_SOUTH"))
+      {
+         return(MOVE_SOUTH);
+      }
+
+      if (name.equals("MOVE_SE"))
+      {
+         return(MOVE_SE);
+      }
+
+      return(-1);
    }
 }

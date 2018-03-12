@@ -252,16 +252,18 @@ public class WormWorxPredict {
   }
 
   // Initialize for predict method.
-  public boolean initPredict(String modelfile)
+  // Return response labels.
+  public String[] inputColumnNames;
+  public String[] initPredict(String modelfile)
   {
 	  try {
 		loadModel(modelfile);
 		modelCategory = model.getModelCategory();		
 	} catch (Exception e) {
 		System.err.println("Cannot initialize for H2O prediction: " + e.getMessage());
-		return false;
+		return null;
 	} 
-	  return true;
+	return model.getResponseDomainValues();
   }
 
   // Predict a feature vector.
@@ -269,12 +271,24 @@ public class WormWorxPredict {
 	  
 	  float[] probabilities = null;
 	  
+	  // Create input column names?
+	  String[] splitLine = metamorphCsv.split(",");
+	  if (inputColumnNames == null)
+	  {
+		  inputColumnNames = new String[splitLine.length];
+          for (int i = 0, j = inputColumnNames.length - 1; i < j; i++)
+          {
+              inputColumnNames[i] = "c" + i;
+          }
+          inputColumnNames[inputColumnNames.length - 1] = "response";
+	  }
+	  
         // Parse the CSV line.
-        RowData row = formatDataRow(metamorphCsv.split(","));
+        RowData row = formatDataRow(metamorphCsv.split(","), inputColumnNames);
         
         // Do the prediction.
         switch (modelCategory) {
-          case AutoEncoder: {
+          case AutoEncoder: {  
             AutoEncoderModelPrediction p = model.predictAutoEncoder(row);
             probabilities = new float[p.reconstructed.length];
             for (int i=0; i < p.reconstructed.length; i++) {
@@ -282,7 +296,8 @@ public class WormWorxPredict {
             }
             break;
           }
-          case Binomial: {
+          
+          case Binomial: {     	  
             BinomialModelPrediction p = model.predictBinomial(row);
             probabilities = new float[p.classProbabilities.length];
             for (int i = 0; i < p.classProbabilities.length; i++) {
