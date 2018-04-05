@@ -152,11 +152,19 @@ public class WormDashboard extends JFrame
             {
                try
                {
-                  worm.createMetamorphWekaNN();
+                  worm.createHeadMetamorphWekaNN();
                }
                catch (Exception e)
                {
-                  display.controls.messageText.setText("Cannot train metamorph Weka NN: " + e.getMessage());
+                  display.controls.messageText.setText("Cannot train head metamorph Weka NN: " + e.getMessage());
+               }
+               try
+               {
+                  worm.createBodyMetamorphWekaNN();
+               }
+               catch (Exception e)
+               {
+                  display.controls.messageText.setText("Cannot train body metamorph Weka NN: " + e.getMessage());
                }
                trainNNcheck.setState(false);
             }
@@ -172,13 +180,24 @@ public class WormDashboard extends JFrame
          {
             try
             {
-               worm.saveMetamorphNNtrainingData();
-               display.controls.messageText.setText("Metamorph NN dataset saved in file " + Worm.NN_DATASET_SAVE_FILE_NAME);
+               worm.saveHeadMetamorphNNtrainingData();
             }
             catch (Exception e)
             {
-               display.controls.messageText.setText("Cannot save metamorph NN dataset: " + e.getMessage());
+               display.controls.messageText.setText("Cannot save head metamorph NN dataset: " + e.getMessage());
+               return;
             }
+            try
+            {
+               worm.saveBodyMetamorphNNtrainingData();
+            }
+            catch (Exception e)
+            {
+               display.controls.messageText.setText("Cannot save body metamorph NN dataset: " + e.getMessage());
+               return;
+            }
+            display.controls.messageText.setText("Metamorph NN datasets saved in files " +
+                                                 Worm.HEAD_NN_DATASET_SAVE_FILE_NAME + " and " + Worm.BODY_NN_DATASET_SAVE_FILE_NAME);
             return;
          }
       }

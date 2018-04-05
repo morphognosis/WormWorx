@@ -61,6 +61,7 @@ public class Main
       "     [-epochIntervalMultiplier <quantity> (default=" + Morphognostic.DEFAULT_EPOCH_INTERVAL_MULTIPLIER + ")]\n" +
       "     [-randomSeed <random number seed> (default=" + DEFAULT_RANDOM_SEED + ")]\n" +
       "     [-save <file name>]\n" +
+      "     [-saveNNdatasets]\n" +
       "  Resume run:\n" +
       "    java openworm.morphognosis.wormworx.Main\n" +
       "      -steps <steps> | -display\n" +
@@ -70,6 +71,7 @@ public class Main
       "     [-wormsimSMBmuscleAmplifierOverrides <dorsal> <ventral> (defaults=1.0)]\n" +
       "     [-randomSeed <random number seed>]\n" +
       "     [-save <file name>]\n" +
+      "     [-saveNNdatasets]\n" +
       "Exit codes:\n" +
       "  0=success (found food)\n" +
       "  1=fail";
@@ -245,6 +247,10 @@ public class Main
             {
                display.stepDelay = Display.MAX_STEP_DELAY;
             }
+            else
+            {
+               display.controls.updateStepCounter();
+            }
          }
       }
       return(result);
@@ -310,6 +316,7 @@ public class Main
       int     randomSeed        = DEFAULT_RANDOM_SEED;
       String  loadfile          = null;
       String  savefile          = null;
+      boolean saveNNdatasets    = false;
       boolean display           = false;
       boolean gotParm           = false;
       int     NUM_NEIGHBORHOODS = Morphognostic.DEFAULT_NUM_NEIGHBORHOODS;
@@ -696,6 +703,11 @@ public class Main
             }
             continue;
          }
+         if (args[i].equals("-saveNNdatasets"))
+         {
+            saveNNdatasets = true;
+            continue;
+         }
          System.err.println(Usage);
          System.exit(1);
       }
@@ -765,12 +777,21 @@ public class Main
       {
          try
          {
-            System.out.println("Training metamorph Weka NN...");
-            main.worm.createMetamorphWekaNN();
+            System.out.println("Training head metamorph Weka NN...");
+            main.worm.createHeadMetamorphWekaNN();
          }
          catch (Exception e)
          {
-            System.err.println("Cannot train metamorph Weka NN: " + e.getMessage());
+            System.err.println("Cannot train head metamorph Weka NN: " + e.getMessage());
+         }
+         try
+         {
+            System.out.println("Training body metamorph Weka NN...");
+            main.worm.createBodyMetamorphWekaNN();
+         }
+         catch (Exception e)
+         {
+            System.err.println("Cannot train body metamorph Weka NN: " + e.getMessage());
          }
       }
 
@@ -787,6 +808,27 @@ public class Main
          catch (Exception e)
          {
             System.err.println("Cannot save to file " + savefile + ": " + e.getMessage());
+         }
+      }
+
+      // Save neural network datasets?
+      if (saveNNdatasets)
+      {
+         try
+         {
+            main.worm.saveHeadMetamorphNNtrainingData();
+         }
+         catch (Exception e)
+         {
+            System.err.println("Cannot save head neural network dataset: " + e.getMessage());
+         }
+         try
+         {
+            main.worm.saveBodyMetamorphNNtrainingData();
+         }
+         catch (Exception e)
+         {
+            System.err.println("Cannot save body neural network dataset: " + e.getMessage());
          }
       }
 

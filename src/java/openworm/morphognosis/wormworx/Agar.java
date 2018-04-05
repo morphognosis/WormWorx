@@ -18,7 +18,7 @@ import java.io.PrintWriter;
 public class Agar
 {
    // Dimensions.
-   public static Dimension SIZE = new Dimension(1500, 750);
+   public static Dimension SIZE = new Dimension(1000, 500);
 
    // Cell grid dimensions.
    public static final Dimension GRID_SIZE = new Dimension(100, 50);
@@ -38,11 +38,9 @@ public class Agar
 
    // Cells.
    // See SectorDisplay.EMPTY_CELL_VALUE.
-   public static final int CELL_DIMENSIONS    = 2;
-   public static final int WORM_CELL_INDEX    = 0;
-   public static final int SALT_CELL_INDEX    = 1;
    public static final int WORM_SEGMENT_VALUE = 1;
-   public int[][][]        cells;
+   public int[][]          wormCells;
+   public float[][]        saltCells;
 
    // Transforms.
    public static final float SCALE = 0.12f;
@@ -84,14 +82,15 @@ public class Agar
       }
 
       // Create cells.
-      cells = new int[GRID_SIZE.width][GRID_SIZE.height][CELL_DIMENSIONS];
+      wormCells = new int[GRID_SIZE.width][GRID_SIZE.height];
       for (x = 0; x < GRID_SIZE.width; x++)
       {
          for (y = 0; y < GRID_SIZE.height; y++)
          {
-            cells[x][y][WORM_CELL_INDEX] = SectorDisplay.EMPTY_CELL_VALUE;
+            wormCells[x][y] = SectorDisplay.EMPTY_CELL_VALUE;
          }
       }
+      saltCells = new float[GRID_SIZE.width][GRID_SIZE.height];
       setSalty(foodColor);
    }
 
@@ -107,7 +106,7 @@ public class Agar
          {
             for (y = 0; y < GRID_SIZE.height; y++)
             {
-               cells[x][y][SALT_CELL_INDEX] = -1;
+               saltCells[x][y] = -1.0f;
             }
          }
       }
@@ -119,8 +118,7 @@ public class Agar
          {
             for (y = 0; y < GRID_SIZE.height; y++)
             {
-               int d = cellDist(sx, sy, x, y);
-               cells[x][y][SALT_CELL_INDEX] = d;
+               saltCells[x][y] = cellDist((float)sx, (float)sy, (float)x, (float)y);
             }
          }
       }
@@ -128,15 +126,14 @@ public class Agar
 
 
    // Cell distance.
-   public int cellDist(int fromX, int fromY, int toX, int toY)
+   public float cellDist(float fromX, float fromY, float toX, float toY)
    {
-      int    dx  = Math.abs(toX - fromX);
-      int    dy  = Math.abs(toY - fromY);
-      double dx2 = (double)(dx * dx);
-      double dy2 = (double)(dy * dy);
-      double d   = Math.sqrt(dx2 + dy2);
+      double dx  = Math.abs(toX - fromX);
+      double dy  = Math.abs(toY - fromY);
+      double dx2 = dx * dx;
+      double dy2 = dy * dy;
 
-      return((int)d);
+      return((float)Math.sqrt(dx2 + dy2));
    }
 
 
@@ -177,10 +174,7 @@ public class Agar
       {
          for (y = 0; y < GRID_SIZE.height; y++)
          {
-            for (int d = 0; d < CELL_DIMENSIONS; d++)
-            {
-               Utility.saveInt(writer, cells[x][y][d]);
-            }
+            Utility.saveInt(writer, wormCells[x][y]);
          }
       }
    }
@@ -211,17 +205,14 @@ public class Agar
 
       DataInputStream reader = new DataInputStream(input);
 
-      cells = new int[GRID_SIZE.width][GRID_SIZE.height][2];
+      wormCells = new int[GRID_SIZE.width][GRID_SIZE.height];
       clear();
 
       for (x = 0; x < GRID_SIZE.width; x++)
       {
          for (y = 0; y < GRID_SIZE.height; y++)
          {
-            for (int d = 0; d < CELL_DIMENSIONS; d++)
-            {
-               cells[x][y][d] = Utility.loadInt(reader);
-            }
+            wormCells[x][y] = Utility.loadInt(reader);
          }
       }
    }
@@ -236,10 +227,7 @@ public class Agar
       {
          for (y = 0; y < GRID_SIZE.height; y++)
          {
-            for (int d = 0; d < CELL_DIMENSIONS; d++)
-            {
-               cells[x][y][d] = SectorDisplay.EMPTY_CELL_VALUE;
-            }
+            wormCells[x][y] = SectorDisplay.EMPTY_CELL_VALUE;
          }
       }
    }

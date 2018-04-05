@@ -9,8 +9,10 @@ import java.awt.geom.Point2D;
 import java.io.*;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.List;
 
-import hex.genmodel.tools.WormWorxPredict;
+import hex.genmodel.tools.WormWorxBodyPredict;
+import hex.genmodel.tools.WormWorxHeadPredict;
 import morphognosis.Metamorph;
 import morphognosis.Morphognostic;
 import morphognosis.Orientation;
@@ -31,22 +33,21 @@ public class Worm
    // Agar.
    public Agar agar;
 
-   // Sensors.
-   // 0-21: neighboring worm segment relative coordinates.
-   // 22-25: relative salt distances.
-   public static final int NUM_SENSORS = 26;
+   // Directions.
+   public static final int NORTHWEST      = 0;
+   public static final int NORTH          = 1;
+   public static final int NORTHEAST      = 2;
+   public static final int WEST           = 3;
+   public static final int CENTER         = 4;
+   public static final int EAST           = 5;
+   public static final int SOUTHWEST      = 6;
+   public static final int SOUTH          = 7;
+   public static final int SOUTHEAST      = 8;
+   public static final int NUM_DIRECTIONS = 9;
 
    // Responses.
-   public static final int MOVE_NW       = 0;
-   public static final int MOVE_NORTH    = 1;
-   public static final int MOVE_NE       = 2;
-   public static final int MOVE_WEST     = 3;
-   public static final int STAY          = 4;
-   public static final int MOVE_EAST     = 5;
-   public static final int MOVE_SW       = 6;
-   public static final int MOVE_SOUTH    = 7;
-   public static final int MOVE_SE       = 8;
-   public static final int NUM_RESPONSES = 9;
+   public static final int NUM_RESPONSES = NUM_DIRECTIONS;
+   public static final int STAY          = CENTER;
 
    // Event time.
    public int eventTime;
@@ -78,8 +79,9 @@ public class Worm
    public static double VENTRAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE = -1.0;
 
    // H2O morphognostic classification.
-   public WormWorxPredict H2Opredict;
-   public                 String[] H2OresponseLabels;
+   public WormWorxHeadPredict H2OheadPredict;
+   public WormWorxBodyPredict H2ObodyPredict;
+   public String[] H2OresponseLabels;
 
    // Found food?
    public boolean foundFood;
@@ -87,8 +89,9 @@ public class Worm
    // Simulator synchronization.
    public Object wormsimLock;
 
-   // Neural network dataset save file name.
-   public static final String NN_DATASET_SAVE_FILE_NAME = "metamorphs.csv";
+   // Neural network dataset save file names.
+   public static final String HEAD_NN_DATASET_SAVE_FILE_NAME = "headMetamorphs.csv";
+   public static final String BODY_NN_DATASET_SAVE_FILE_NAME = "bodyMetamorphs.csv";
 
    // Worm segment.
    public class Segment
@@ -96,23 +99,18 @@ public class Worm
       // Number.
       public int number;
 
-      // Number of superpositions.
-      // Must be > 0 and <= NUM_RESPONSES.
-      public static final int NUM_SUPERPOSITIONS = 1;
-
       // Position.
-      public int[] x;
-      public int[] y;
-      public int   nx, ny;
-      public int   rx, ry;
+      public int x, x2, rx;
+      public int y, y2, ry;
 
       // Sensors.
-      public float[] sensors;
+      public int   NUM_SENSORS;
+      public int[] sensors;
 
-      // Responses.
-      public int[] responses;
+      // Response.
+      public int response;
 
-      // Current morphognostic.
+      // Morphognostic.
       public Morphognostic morphognostic;
 
       // Navigation.
@@ -151,18 +149,17 @@ public class Worm
       }
       public ArrayList<Event> events;
 
+      // Metamorphs.
+      public List<Metamorph> metamorphs;
+
       // Constructors.
-      public Segment(int number)
+      public Segment(int number, int numSensors, List<Metamorph> metamorphs)
       {
-         init(number);
+         init(number, numSensors, metamorphs);
          int [] numEventTypes = new int[NUM_SENSORS];
-         for (int i = 0; i < 22; i++)
+         for (int i = 0; i < NUM_SENSORS; i++)
          {
-            numEventTypes[i] = 1;
-         }
-         for (int i = 22; i < NUM_SENSORS; i++)
-         {
-            numEventTypes[i] = 3;
+            numEventTypes[i] = 9;
          }
          morphognostic = new Morphognostic(Orientation.WEST, numEventTypes);
          Morphognostic.Neighborhood n = morphognostic.neighborhoods.get(morphognostic.NUM_NEIGHBORHOODS - 1);
@@ -170,7 +167,7 @@ public class Worm
       }
 
 
-      public Segment(int number,
+      public Segment(int number, int numSensors, List<Metamorph> metamorphs,
                      int NUM_NEIGHBORHOODS,
                      int NEIGHBORHOOD_INITIAL_DIMENSION,
                      int NEIGHBORHOOD_DIMENSION_STRIDE,
@@ -178,15 +175,11 @@ public class Worm
                      int EPOCH_INTERVAL_STRIDE,
                      int EPOCH_INTERVAL_MULTIPLIER)
       {
-         init(number);
+         init(number, numSensors, metamorphs);
          int [] numEventTypes = new int[NUM_SENSORS];
-         for (int i = 0; i < 22; i++)
+         for (int i = 0; i < NUM_SENSORS; i++)
          {
-            numEventTypes[i] = 1;
-         }
-         for (int i = 22; i < NUM_SENSORS; i++)
-         {
-            numEventTypes[i] = 3;
+            numEventTypes[i] = 9;
          }
          morphognostic = new Morphognostic(Orientation.WEST, numEventTypes,
                                            NUM_NEIGHBORHOODS,
@@ -200,29 +193,20 @@ public class Worm
       }
 
 
-      void init(int number)
+      void init(int number, int numSensors, List<Metamorph> metamorphs)
       {
-         this.number = number;
+         this.number     = number;
+         NUM_SENSORS     = numSensors;
+         this.metamorphs = metamorphs;
 
-         x = new int[NUM_SUPERPOSITIONS];
-         y = new int[NUM_SUPERPOSITIONS];
-         for (int i = 0; i < NUM_SUPERPOSITIONS; i++)
-         {
-            x[i] = segmentSimPositions[number].x;
-            y[i] = segmentSimPositions[number].y;
-         }
-         rx      = segmentSimPositions[number].x;
-         ry      = segmentSimPositions[number].y;
-         sensors = new float[NUM_SENSORS];
+         x       = rx = segmentSimPositions[number].x;
+         y       = ry = segmentSimPositions[number].y;
+         sensors = new int[NUM_SENSORS];
          for (int i = 0; i < NUM_SENSORS; i++)
          {
-            sensors[i] = 0.0f;
+            sensors[i] = CENTER;
          }
-         responses = new int[NUM_RESPONSES];
-         for (int i = 0; i < NUM_RESPONSES; i++)
-         {
-            responses[i] = STAY;
-         }
+         response    = STAY;
          landmarkMap = new boolean[Agar.GRID_SIZE.width][Agar.GRID_SIZE.height];
          for (int i = 0; i < Agar.GRID_SIZE.width; i++)
          {
@@ -237,19 +221,13 @@ public class Worm
 
       public void reset()
       {
-         for (int i = 0; i < NUM_SUPERPOSITIONS; i++)
-         {
-            x[i] = rx;
-            y[i] = ry;
-         }
+         x = rx;
+         y = ry;
          for (int i = 0; i < NUM_SENSORS; i++)
          {
-            sensors[i] = 0.0f;
+            sensors[i] = CENTER;
          }
-         for (int i = 0; i < NUM_SUPERPOSITIONS; i++)
-         {
-            responses[i] = STAY;
-         }
+         response = STAY;
          for (int i = 0; i < Agar.GRID_SIZE.width; i++)
          {
             for (int j = 0; j < Agar.GRID_SIZE.height; j++)
@@ -263,204 +241,23 @@ public class Worm
 
 
       // Sensor/response cycle.
-      public void cycle(float[] sensors)
+      public int cycle(int[] sensors)
       {
-         // Determine best superposition given sensor data.
+         // Update morphognostic.
          int[] values = new int[NUM_SENSORS];
          for (int i = 0; i < NUM_SENSORS; i++)
          {
             this.sensors[i] = sensors[i];
-            values[i]       = (int)sensors[i];
+            values[i]       = sensors[i];
          }
-         nx = x[0];
-         ny = y[0];
-         int w = Agar.GRID_SIZE.width;
-         int h = Agar.GRID_SIZE.height;
-         int a = maxEventAge + 1;
-         if (driver == DRIVER_TYPE.WORMSIM.getValue())
-         {
-            int response = wormsimResponse(this);
-            for (int i = 0; i < NUM_RESPONSES; i++)
-            {
-               responses[i] = response;
-            }
-         }
-         else
-         {
-            for (int i = 0; i < NUM_RESPONSES; i++)
-            {
-               responses[i] = STAY;
-            }
-            float[] responseValues = new float[NUM_RESPONSES];
-            float dist = -1.0f;
-            for (int i = 0; i < NUM_SUPERPOSITIONS; i++)
-            {
-               ArrayList<Event> evts = new ArrayList<Event>();
-               for (Event e : events)
-               {
-                  evts.add(e.clone());
-               }
-               evts.add(new Event(values, x[i], y[i], eventTime));
-               if ((eventTime - evts.get(0).time) > maxEventAge)
-               {
-                  evts.remove(0);
-               }
-               int morphEvents[][][][] = new int[w][h][NUM_SENSORS][a];
-               for (int x2 = 0; x2 < w; x2++)
-               {
-                  for (int y2 = 0; y2 < h; y2++)
-                  {
-                     for (int n = 0; n < NUM_SENSORS; n++)
-                     {
-                        for (int t = 0; t < a; t++)
-                        {
-                           morphEvents[x2][y2][n][t] = -1;
-                        }
-                     }
-                  }
-               }
-               for (Event e : evts)
-               {
-                  for (int n = 0; n < NUM_SENSORS; n++)
-                  {
-                     morphEvents[e.x][e.y][n][eventTime - e.time] = e.values[n];
-                  }
-               }
-               Morphognostic m = morphognostic.clone();
-               m.update(morphEvents, x[i], y[i]);
-
-               // Evaluate against metamorphs.
-               if (driver == DRIVER_TYPE.METAMORPH_DB.getValue())
-               {
-                  float[] responseDistances = metamorphDBresponse(m);
-                  float d = -1.0f;
-                  for (int j = 0; j < NUM_RESPONSES; j++)
-                  {
-                     if (responseDistances[j] != -1.0f)
-                     {
-                        if ((d == -1.0f) || (responseDistances[j] < d))
-                        {
-                           d = responseDistances[j];
-                        }
-                     }
-                  }
-                  if (d != -1.0f)
-                  {
-                     if ((dist == -1.0f) || (d < dist))
-                     {
-                        nx   = x[i];
-                        ny   = y[i];
-                        dist = d;
-                        for (int j = 0; j < NUM_RESPONSES; j++)
-                        {
-                           responseValues[j] = responseDistances[j];
-                        }
-                     }
-                  }
-               }
-               else if ((driver == DRIVER_TYPE.METAMORPH_WEKA_NN.getValue()) ||
-                        (driver == DRIVER_TYPE.METAMORPH_H2O_NN.getValue()))
-               {
-                  float[] responseProbabilities;
-                  if (driver == DRIVER_TYPE.METAMORPH_WEKA_NN.getValue())
-                  {
-                     responseProbabilities = metamorphWekaNNresponse(m);
-                  }
-                  else
-                  {
-                     responseProbabilities = metamorphH2ONNresponse(m);
-                  }
-                  float d = -1.0f;
-                  for (int j = 0; j < NUM_RESPONSES; j++)
-                  {
-                     if ((d == -1.0f) || (responseProbabilities[j] > d))
-                     {
-                        d = responseProbabilities[j];
-                     }
-                  }
-                  if (d != -1.0f)
-                  {
-                     if ((dist == -1.0f) || (d > dist))
-                     {
-                        nx   = x[i];
-                        ny   = y[i];
-                        dist = d;
-                        for (int j = 0; j < NUM_RESPONSES; j++)
-                        {
-                           responseValues[j] = responseProbabilities[j];
-                        }
-                     }
-                  }
-               }
-            }
-            if (dist != -1.0f)
-            {
-               if (driver == DRIVER_TYPE.METAMORPH_DB.getValue())
-               {
-                  for (int i = 0; i < NUM_SUPERPOSITIONS; i++)
-                  {
-                     float d = -1.0f;
-                     int   k = random.nextInt(NUM_RESPONSES);
-                     int   q = -1;
-                     for (int j = 0; j < NUM_RESPONSES; j++)
-                     {
-                        if (responseValues[k] != -1.0f)
-                        {
-                           if ((d == -1.0f) || (responseValues[k] < d))
-                           {
-                              if (q != -1)
-                              {
-                                 responseValues[q] = d;
-                              }
-                              q = k;
-                              d = responseValues[k];
-                              responseValues[k] = -1.0f;
-                              responses[i]      = k;
-                           }
-                        }
-                        k = (k + 1) % NUM_RESPONSES;
-                     }
-                  }
-               }
-               else
-               {
-                  for (int i = 0; i < NUM_SUPERPOSITIONS; i++)
-                  {
-                     float d = -1.0f;
-                     int   k = random.nextInt(NUM_RESPONSES);
-                     int   q = -1;
-                     for (int j = 0; j < NUM_RESPONSES; j++)
-                     {
-                        if (responseValues[k] != -1.0f)
-                        {
-                           if ((d == -1.0f) || (responseValues[k] > d))
-                           {
-                              if (q != -1)
-                              {
-                                 responseValues[q] = d;
-                              }
-                              q = k;
-                              d = responseValues[k];
-                              responseValues[k] = -1.0f;
-                              responses[i]      = k;
-                           }
-                        }
-                        k = (k + 1) % NUM_RESPONSES;
-                     }
-                  }
-               }
-            }
-         }
-
-         // Update landmarks.
-         landmarkMap[nx][ny] = true;
-
-         // Update morphognostic.
-         events.add(new Event(values, nx, ny, eventTime));
+         events.add(new Event(values, x, y, eventTime));
          if ((eventTime - events.get(0).time) > maxEventAge)
          {
             events.remove(0);
          }
+         int w = Agar.GRID_SIZE.width;
+         int h = Agar.GRID_SIZE.height;
+         int a = maxEventAge + 1;
          int morphEvents[][][][] = new int[w][h][NUM_SENSORS][a];
          for (int x2 = 0; x2 < w; x2++)
          {
@@ -482,10 +279,33 @@ public class Worm
                morphEvents[e.x][e.y][n][eventTime - e.time] = e.values[n];
             }
          }
-         morphognostic.update(morphEvents, nx, ny);
+         morphognostic.update(morphEvents, x, y);
+
+         // Respond.
+         if (driver == DRIVER_TYPE.METAMORPH_DB.getValue())
+         {
+            response = metamorphDBresponse(morphognostic, number);
+         }
+         else if (driver == DRIVER_TYPE.METAMORPH_WEKA_NN.getValue())
+         {
+            response = metamorphWekaNNresponse(morphognostic, number);
+         }
+         else if (driver == DRIVER_TYPE.METAMORPH_H2O_NN.getValue())
+         {
+            response = metamorphH2ONNresponse(morphognostic, number);
+         }
+         else if (driver == DRIVER_TYPE.WORMSIM.getValue())
+         {
+            response = wormsimResponse(this);
+         }
+         else
+         {
+            response = STAY;
+         }
+         projectResponsePosition();
 
          // Update metamorphs.
-         Metamorph metamorph = new Metamorph(morphognostic.clone(), responses[0], getResponseName(responses[0]));
+         Metamorph metamorph = new Metamorph(morphognostic.clone(), response, getResponseName(response));
          boolean   found     = false;
          boolean   dup       = false;
          for (Metamorph m : metamorphs)
@@ -512,14 +332,82 @@ public class Worm
             }
             metamorphs.add(metamorph);
          }
+         return(response);
       }
 
 
-      // Collapse superpositions.
-      public void collapsePosition()
+      // Determine next position from response.
+      public void projectResponsePosition()
       {
-         x[0] = nx;
-         y[0] = ny;
+         int width  = Agar.GRID_SIZE.width;
+         int height = Agar.GRID_SIZE.height;
+         int nx, ny, sx, sy, wx, wy, ex, ey;
+
+         nx = x;
+         ny = ((y + 1) % height);
+         wx = x - 1;
+         if (wx < 0) { wx += width; }
+         wy = y;
+         ex = ((x + 1) % width);
+         ey = y;
+         sx = x;
+         sy = y - 1;
+         if (sy < 0) { sy += height; }
+         switch (response)
+         {
+         case NORTHWEST:
+            x2 = wx;
+            y2 = ny;
+            break;
+
+         case NORTH:
+            x2 = nx;
+            y2 = ny;
+            break;
+
+         case NORTHEAST:
+            x2 = ex;
+            y2 = ny;
+            break;
+
+         case WEST:
+            x2 = wx;
+            y2 = wy;
+            break;
+
+         case STAY:
+            x2 = x;
+            y2 = y;
+            break;
+
+         case EAST:
+            x2 = ex;
+            y2 = ey;
+            break;
+
+         case SOUTHWEST:
+            x2 = wx;
+            y2 = sy;
+            break;
+
+         case SOUTH:
+            x2 = sx;
+            y2 = sy;
+            break;
+
+         case SOUTHEAST:
+            x2 = ex;
+            y2 = sy;
+            break;
+         }
+      }
+
+
+      // Set projected position.
+      public void setProjectedPosition()
+      {
+         x = x2;
+         y = y2;
       }
 
 
@@ -527,11 +415,8 @@ public class Worm
       {
          PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
 
-         for (int i = 0; i < NUM_SUPERPOSITIONS; i++)
-         {
-            Utility.saveInt(writer, x[i]);
-            Utility.saveInt(writer, y[i]);
-         }
+         Utility.saveInt(writer, x);
+         Utility.saveInt(writer, y);
          Utility.saveInt(writer, rx);
          Utility.saveInt(writer, ry);
          Utility.saveInt(writer, maxEventAge);
@@ -544,19 +429,81 @@ public class Worm
       {
          DataInputStream reader = new DataInputStream(input);
 
-         for (int i = 0; i < NUM_SUPERPOSITIONS; i++)
-         {
-            x[i] = Utility.loadInt(reader);
-            y[i] = Utility.loadInt(reader);
-         }
+         x             = Utility.loadInt(reader);
+         y             = Utility.loadInt(reader);
          rx            = Utility.loadInt(reader);
          ry            = Utility.loadInt(reader);
          maxEventAge   = Utility.loadInt(reader);
          morphognostic = Morphognostic.load(input);
       }
    }
-   public static final int NUM_SEGMENTS = 12;
-   public Segment[] segments;
+
+   // Head segment.
+   public class HeadSegment extends Segment
+   {
+      // Salt direction sensor.
+      public static final int NUM_HEAD_SENSORS = 2;
+
+      // Constructors.
+      public HeadSegment(int number, List<Metamorph> headMetamorphs)
+      {
+         super(number, NUM_HEAD_SENSORS, headMetamorphs);
+      }
+
+
+      public HeadSegment(int number, List<Metamorph> headMetamorphs,
+                         int NUM_NEIGHBORHOODS,
+                         int NEIGHBORHOOD_INITIAL_DIMENSION,
+                         int NEIGHBORHOOD_DIMENSION_STRIDE,
+                         int NEIGHBORHOOD_DIMENSION_MULTIPLIER,
+                         int EPOCH_INTERVAL_STRIDE,
+                         int EPOCH_INTERVAL_MULTIPLIER)
+      {
+         super(number, NUM_HEAD_SENSORS, headMetamorphs,
+               NUM_NEIGHBORHOODS,
+               NEIGHBORHOOD_INITIAL_DIMENSION,
+               NEIGHBORHOOD_DIMENSION_STRIDE,
+               NEIGHBORHOOD_DIMENSION_MULTIPLIER,
+               EPOCH_INTERVAL_STRIDE,
+               EPOCH_INTERVAL_MULTIPLIER);
+      }
+   }
+
+   // Body segment.
+   public class BodySegment extends Segment
+   {
+      // Anterior segment current and next directions.
+      public static final int NUM_BODY_SENSORS = 3;
+
+      public BodySegment(int number, List<Metamorph> bodyMetamorphs)
+      {
+         super(number, NUM_BODY_SENSORS, bodyMetamorphs);
+      }
+
+
+      // Constructors.
+      public BodySegment(int number, List<Metamorph> bodyMetamorphs,
+                         int NUM_NEIGHBORHOODS,
+                         int NEIGHBORHOOD_INITIAL_DIMENSION,
+                         int NEIGHBORHOOD_DIMENSION_STRIDE,
+                         int NEIGHBORHOOD_DIMENSION_MULTIPLIER,
+                         int EPOCH_INTERVAL_STRIDE,
+                         int EPOCH_INTERVAL_MULTIPLIER)
+      {
+         super(number, NUM_BODY_SENSORS, bodyMetamorphs,
+               NUM_NEIGHBORHOODS,
+               NEIGHBORHOOD_INITIAL_DIMENSION,
+               NEIGHBORHOOD_DIMENSION_STRIDE,
+               NEIGHBORHOOD_DIMENSION_MULTIPLIER,
+               EPOCH_INTERVAL_STRIDE,
+               EPOCH_INTERVAL_MULTIPLIER);
+      }
+   }
+
+   public static final int NUM_SEGMENTS      = 12;
+   public static final int NUM_BODY_SEGMENTS = 5;
+   public HeadSegment      headSegment;
+   public BodySegment[] bodySegments;
    public static final int NSEG = 48;
    public static final int NBAR = (NSEG + 1);
    public double[]         wormBody;
@@ -564,10 +511,14 @@ public class Worm
    public Point[] segmentSimPositions;
 
    // Metamorphs.
-   public ArrayList<Metamorph> metamorphs;
-   public FastVector           metamorphWekaNNattributeNames;
-   public Instances            metamorphWekaInstances;
-   MultilayerPerceptron        metamorphWekaNN;
+   public ArrayList<Metamorph> headMetamorphs;
+   public ArrayList<Metamorph> bodyMetamorphs;
+   public FastVector           headMetamorphWekaNNattributeNames;
+   public FastVector           bodyMetamorphWekaNNattributeNames;
+   public Instances            headMetamorphWekaInstances;
+   public Instances            bodyMetamorphWekaInstances;
+   MultilayerPerceptron        headMetamorphWekaNN;
+   MultilayerPerceptron        bodyMetamorphWekaNN;
    public static final boolean saveMetamorphWekaInstances = false;
    public static final boolean saveMetamorphWekaNN        = false;
    public static final boolean evaluateMetamorphWekaNN    = true;
@@ -580,15 +531,19 @@ public class Worm
    public Worm(Agar agar, int randomSeed)
    {
       init(agar, randomSeed);
-      segments = new Segment[NUM_SEGMENTS];
-      for (int i = 0; i < NUM_SEGMENTS; i++)
+      headMetamorphs = new ArrayList<Metamorph>();
+      headSegment    = new HeadSegment(0, headMetamorphs);
+      bodyMetamorphs = new ArrayList<Metamorph>();
+      bodySegments   = new BodySegment[NUM_BODY_SEGMENTS];
+      for (int i = 0; i < NUM_BODY_SEGMENTS; i++)
       {
-         segments[i] = new Segment(i);
+         bodySegments[i] = new BodySegment(i + 1, bodyMetamorphs);
       }
       placeWormOnAgar();
-      metamorphs = new ArrayList<Metamorph>();
-      Morphognostic morphognostic = segments[0].morphognostic;
-      initMetamorphWekaNN(morphognostic);
+      Morphognostic morphognostic = headSegment.morphognostic;
+      initHeadMetamorphWekaNN(morphognostic);
+      morphognostic = bodySegments[0].morphognostic;
+      initBodyMetamorphWekaNN(morphognostic);
    }
 
 
@@ -601,21 +556,31 @@ public class Worm
                int EPOCH_INTERVAL_MULTIPLIER)
    {
       init(agar, randomSeed);
-      segments = new Segment[NUM_SEGMENTS];
-      for (int i = 0; i < NUM_SEGMENTS; i++)
+      headMetamorphs = new ArrayList<Metamorph>();
+      headSegment    = new HeadSegment(0, headMetamorphs,
+                                       NUM_NEIGHBORHOODS,
+                                       NEIGHBORHOOD_INITIAL_DIMENSION,
+                                       NEIGHBORHOOD_DIMENSION_STRIDE,
+                                       NEIGHBORHOOD_DIMENSION_MULTIPLIER,
+                                       EPOCH_INTERVAL_STRIDE,
+                                       EPOCH_INTERVAL_MULTIPLIER);
+      bodyMetamorphs = new ArrayList<Metamorph>();
+      bodySegments   = new BodySegment[NUM_BODY_SEGMENTS];
+      for (int i = 0; i < NUM_BODY_SEGMENTS; i++)
       {
-         segments[i] = new Segment(i,
-                                   NUM_NEIGHBORHOODS,
-                                   NEIGHBORHOOD_INITIAL_DIMENSION,
-                                   NEIGHBORHOOD_DIMENSION_STRIDE,
-                                   NEIGHBORHOOD_DIMENSION_MULTIPLIER,
-                                   EPOCH_INTERVAL_STRIDE,
-                                   EPOCH_INTERVAL_MULTIPLIER);
+         bodySegments[i] = new BodySegment(i + 1, bodyMetamorphs,
+                                           NUM_NEIGHBORHOODS,
+                                           NEIGHBORHOOD_INITIAL_DIMENSION,
+                                           NEIGHBORHOOD_DIMENSION_STRIDE,
+                                           NEIGHBORHOOD_DIMENSION_MULTIPLIER,
+                                           EPOCH_INTERVAL_STRIDE,
+                                           EPOCH_INTERVAL_MULTIPLIER);
       }
       placeWormOnAgar();
-      metamorphs = new ArrayList<Metamorph>();
-      Morphognostic morphognostic = segments[0].morphognostic;
-      initMetamorphWekaNN(morphognostic);
+      Morphognostic morphognostic = headSegment.morphognostic;
+      initHeadMetamorphWekaNN(morphognostic);
+      morphognostic = bodySegments[0].morphognostic;
+      initBodyMetamorphWekaNN(morphognostic);
    }
 
 
@@ -633,18 +598,21 @@ public class Worm
       wormVerts           = new Point2D.Double[NBAR];
       segmentSimPositions = new Point[NUM_SEGMENTS];
       getSegmentSimPositions();
-      H2Opredict        = new WormWorxPredict();
-      foundFood         = false;
-      wormsimLock       = new Object();
-      H2OresponseLabels = H2Opredict.initPredict("wormworx_model");
+      H2OheadPredict = new WormWorxHeadPredict();
+      H2ObodyPredict = new WormWorxBodyPredict();
+      foundFood      = false;
+      wormsimLock    = new Object();
+      boolean result = true;
+      H2OresponseLabels = H2OheadPredict.initPredict("wormworx_head_model");
       if (H2OresponseLabels == null)
       {
-         return(false);
+         result = false;
       }
-      else
+      if (H2ObodyPredict.initPredict("wormworx_body_model") == null)
       {
-         return(true);
+         result = false;
       }
+      return(result);
    }
 
 
@@ -668,7 +636,8 @@ public class Worm
          Wormsim.terminate();
          Wormsim.init();
       }
-      for (Segment segment : segments)
+      headSegment.reset();
+      for (BodySegment segment : bodySegments)
       {
          segment.reset();
       }
@@ -684,13 +653,14 @@ public class Worm
       {
          for (int y = 0; y < Agar.GRID_SIZE.height; y++)
          {
-            agar.cells[x][y][Agar.WORM_CELL_INDEX] = SectorDisplay.EMPTY_CELL_VALUE;
+            agar.wormCells[x][y] = SectorDisplay.EMPTY_CELL_VALUE;
          }
       }
-      for (int i = 0; i < NUM_SEGMENTS; i++)
+      agar.wormCells[headSegment.x][headSegment.y] = Agar.WORM_SEGMENT_VALUE;
+      for (int i = 0; i < NUM_BODY_SEGMENTS; i++)
       {
-         Segment segment = segments[i];
-         agar.cells[segment.x[0]][segment.y[0]][Agar.WORM_CELL_INDEX] = Agar.WORM_SEGMENT_VALUE;
+         BodySegment segment = bodySegments[i];
+         agar.wormCells[segment.x][segment.y] = Agar.WORM_SEGMENT_VALUE;
       }
    }
 
@@ -757,14 +727,20 @@ public class Worm
    // Save worm.
    public void save(FileOutputStream output) throws IOException
    {
-      for (Segment segment : segments)
+      headSegment.save(output);
+      for (BodySegment segment : bodySegments)
       {
          segment.save(output);
       }
       PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
       Utility.saveInt(writer, eventTime);
-      Utility.saveInt(writer, metamorphs.size());
-      for (Metamorph m : metamorphs)
+      Utility.saveInt(writer, headMetamorphs.size());
+      for (Metamorph m : headMetamorphs)
+      {
+         m.save(output);
+      }
+      Utility.saveInt(writer, bodyMetamorphs.size());
+      for (Metamorph m : bodyMetamorphs)
       {
          m.save(output);
       }
@@ -794,20 +770,29 @@ public class Worm
    // Load worm.
    public void load(FileInputStream input) throws IOException
    {
-      for (Segment segment : segments)
+      headSegment.load(input);
+      for (BodySegment segment : bodySegments)
       {
          segment.load(input);
       }
       DataInputStream reader = new DataInputStream(input);
       eventTime = Utility.loadInt(reader);
-      metamorphs.clear();
+      headMetamorphs.clear();
       int n = Utility.loadInt(reader);
       for (int i = 0; i < n; i++)
       {
-         metamorphs.add(Metamorph.load(input));
+         headMetamorphs.add(Metamorph.load(input));
       }
-      Morphognostic morphognostic = segments[0].morphognostic;
-      initMetamorphWekaNN(morphognostic);
+      bodyMetamorphs.clear();
+      n = Utility.loadInt(reader);
+      for (int i = 0; i < n; i++)
+      {
+         bodyMetamorphs.add(Metamorph.load(input));
+      }
+      Morphognostic morphognostic = headSegment.morphognostic;
+      initHeadMetamorphWekaNN(morphognostic);
+      morphognostic = bodySegments[0].morphognostic;
+      initBodyMetamorphWekaNN(morphognostic);
       driver = Utility.loadInt(reader);
       setDriver(driver);
    }
@@ -817,16 +802,10 @@ public class Worm
    // Return true if food found.
    boolean step()
    {
-      int width, height;
+      int width, height, x, y;
 
       // Check if food found.
-      float sx = (float)agar.saltyX[agar.currentSalty] / Agar.CELL_WIDTH;
-      float sy = (float)agar.saltyY[agar.currentSalty] / Agar.CELL_HEIGHT;
-
-      sy = Agar.GRID_SIZE.height - sy;
-      float dist = (float)Math.sqrt(Math.pow((sx - (float)segments[0].x[0]), 2) +
-                                    Math.pow((sy - segments[0].y[0]), 2));
-      if (dist <= Agar.SALT_CONSUMPTION_RANGE)
+      if (agar.saltCells[headSegment.x][headSegment.y] <= Agar.SALT_CONSUMPTION_RANGE)
       {
          foundFood = true;
       }
@@ -843,14 +822,15 @@ public class Worm
          switch (agar.currentSalty)
          {
          case Agar.RED_FOOD:
-            ventral = 1.1;
+            dorsal = 1.5;
             break;
 
          case Agar.GREEN_FOOD:
+            dorsal = 1.08;
             break;
 
          case Agar.BLUE_FOOD:
-            dorsal = 1.5;
+            ventral = 1.05;
             break;
          }
          if (DORSAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE != -1.0)
@@ -870,338 +850,379 @@ public class Worm
       }
 
       // Cycle segments.
-      float[] sensors = new float[NUM_SENSORS];
-      width           = Agar.GRID_SIZE.width;
-      height          = Agar.GRID_SIZE.height;
-      for (int i = 0; i < NUM_SEGMENTS; i++)
+      width  = Agar.GRID_SIZE.width;
+      height = Agar.GRID_SIZE.height;
+      for (int i = 0; i <= NUM_BODY_SEGMENTS; i++)
       {
-         Segment segment = segments[i];
-
-         // Initialize sensors.
-         for (int j = 0; j < 11; j++)
+         Segment segment;
+         if (i == 0)
          {
-            int n = i - (j + 1);
-            if (n < 0) { n += NUM_SEGMENTS; }
-            sensors[j * 2]       = segments[n].x[0] - segment.x[0];
-            sensors[(j * 2) + 1] = segments[n].y[0] - segment.y[0];
+            segment = headSegment;
          }
-         for (int j = 0; j < 4; j++)
+         else
          {
-            int x = segment.x[0];
-            int y = segment.y[0];
-            switch (j)
+            segment = bodySegments[i - 1];
+         }
+
+         int nx, ny, sx, sy, wx, wy, ex, ey;
+         x  = segment.x;
+         y  = segment.y;
+         nx = x;
+         ny = ((y + 1) % height);
+         wx = x - 1;
+         if (wx < 0) { wx += width; }
+         wy = y;
+         ex = ((x + 1) % width);
+         ey = y;
+         sx = x;
+         sy = y - 1;
+         if (sy < 0) { sy += height; }
+
+         // Head segment?
+         if (i == 0)
+         {
+            // Initialize sensors.
+            int[] sensors = new int[headSegment.NUM_SENSORS];
+            float dist = agar.saltCells[headSegment.x][headSegment.y];
+            float d    = 0.0f;
+            int   dir  = CENTER;
+            for (int j = 0; j < NUM_DIRECTIONS; j++)
             {
-            case 0:
-               y           = ((y + 1) % height);
-               sensors[22] = (float)agar.cells[x][y][Agar.SALT_CELL_INDEX];
-               break;
+               switch (j)
+               {
+               case NORTHWEST:
+                  d = agar.saltCells[wx][ny];
+                  break;
 
-            case 1:
-               x--;
-               if (x < 0) { x += width; }
-               sensors[23] = (float)agar.cells[x][y][Agar.SALT_CELL_INDEX];
-               break;
+               case NORTH:
+                  d = agar.saltCells[nx][ny];
+                  break;
 
-            case 2:
-               x           = ((x + 1) % width);
-               sensors[24] = (float)agar.cells[x][y][Agar.SALT_CELL_INDEX];
-               break;
+               case NORTHEAST:
+                  d = agar.saltCells[ex][ny];
+                  break;
 
-            case 3:
-               y--;
-               if (y < 0) { y += height; }
-               sensors[25] = (float)agar.cells[x][y][Agar.SALT_CELL_INDEX];
-               break;
+               case WEST:
+                  d = agar.saltCells[wx][wy];
+                  break;
+
+               case CENTER:
+                  d = agar.saltCells[headSegment.x][headSegment.y];
+                  break;
+
+               case EAST:
+                  d = agar.saltCells[ex][ey];
+                  break;
+
+               case SOUTHWEST:
+                  d = agar.saltCells[wx][sy];
+                  break;
+
+               case SOUTH:
+                  d = agar.saltCells[sx][sy];
+                  break;
+
+               case SOUTHEAST:
+                  d = agar.saltCells[ex][sy];
+                  break;
+               }
+               if (d < dist)
+               {
+                  dist = d;
+                  dir  = j;
+               }
+            }
+            sensors[0] = dir;
+            sensors[1] = headSegment.response;
+
+            // Cycle segment.
+            headSegment.cycle(sensors);
+         }
+         else
+         {
+            // Cycle body segment.
+            BodySegment bodySegment = bodySegments[i - 1];
+            int[] sensors = new int[bodySegment.NUM_SENSORS];
+            Segment priorSegment;
+            if (i == 1)
+            {
+               priorSegment = headSegment;
+            }
+            else
+            {
+               priorSegment = bodySegments[i - 2];
+            }
+            x = priorSegment.x;
+            y = priorSegment.y;
+            int dir = -1;
+            for (int j = 0; j < NUM_DIRECTIONS && dir == -1; j++)
+            {
+               switch (j)
+               {
+               case NORTHWEST:
+                  if ((x == wx) && (y == ny)) { dir = NORTHWEST; }
+                  break;
+
+               case NORTH:
+                  if ((x == nx) && (y == ny)) { dir = NORTH; }
+                  break;
+
+               case NORTHEAST:
+                  if ((x == ex) && (y == ny)) { dir = NORTHEAST; }
+                  break;
+
+               case WEST:
+                  if ((x == wx) && (y == wy)) { dir = WEST; }
+                  break;
+
+               case EAST:
+                  if ((x == ex) && (y == ey)) { dir = EAST; }
+                  break;
+
+               case SOUTHWEST:
+                  if ((x == wx) && (y == sy)) { dir = SOUTHWEST; }
+                  break;
+
+               case SOUTH:
+                  if ((x == sx) && (y == sy)) { dir = SOUTH; }
+                  break;
+
+               case SOUTHEAST:
+                  if ((x == ex) && (y == sy)) { dir = SOUTHEAST; }
+                  break;
+               }
+            }
+            if (dir == -1) { dir = CENTER; }
+            sensors[0] = dir;
+            sensors[1] = priorSegment.response;
+            sensors[2] = bodySegment.response;
+            bodySegment.cycle(sensors);
+
+            // Mirror prior segment to avoid worm disintegration.
+            if ((Math.abs(priorSegment.x2 - bodySegment.x2) > 1) ||
+                (Math.abs(priorSegment.y2 - bodySegment.y2) > 1))
+            {
+               bodySegment.response = priorSegment.response;
+               bodySegment.projectResponsePosition();
             }
          }
-         float saltMin = -1.0f;
-         for (int j = 22; j < 26; j++)
-         {
-            if ((saltMin < 0.0f) || (sensors[j] < saltMin))
-            {
-               saltMin = sensors[j];
-            }
-         }
-         for (int j = 22; j < 26; j++)
-         {
-            sensors[j] -= saltMin;
-            if (sensors[j] > 2.0f) { sensors[j] = 2.0f; }
-         }
-
-         // Cycle segment.
-         segment.cycle(sensors);
       }
       eventTime++;
 
       // Execute responses.
-      for (int i = 0; i < NUM_SEGMENTS; i++)
+      for (int i = 0; i <= NUM_BODY_SEGMENTS; i++)
       {
-         Segment segment = segments[i];
-         segment.collapsePosition();
-
-         int ux, uy, dx, dy, lx, ly, rx, ry;
-         ux = dx = lx = rx = 0;
-         uy = dy = ly = ry = 0;
-         for (int j = 0; j < 4; j++)
+         Segment segment;
+         if (i == 0)
          {
-            int x = segment.x[0];
-            int y = segment.y[0];
-            switch (j)
-            {
-            case 0:
-               y  = ((y + 1) % height);
-               ux = x;
-               uy = y;
-               break;
-
-            case 1:
-               x--;
-               if (x < 0) { x += width; }
-               lx = x;
-               ly = y;
-               break;
-
-            case 2:
-               x  = ((x + 1) % width);
-               rx = x;
-               ry = y;
-               break;
-
-            case 3:
-               y--;
-               if (y < 0) { y += height; }
-               dx = x;
-               dy = y;
-               break;
-            }
+            segment = headSegment;
          }
-         for (int j = 0; j < Segment.NUM_SUPERPOSITIONS; j++)
+         else
          {
-            segment.x[j] = segment.x[0];
-            segment.y[j] = segment.y[0];
-            switch (segment.responses[j])
-            {
-            case MOVE_NW:
-               segment.x[j] = lx;
-               segment.y[j] = uy;
-               break;
-
-            case MOVE_NORTH:
-               segment.x[j] = ux;
-               segment.y[j] = uy;
-               break;
-
-            case MOVE_NE:
-               segment.x[j] = rx;
-               segment.y[j] = uy;
-               break;
-
-            case MOVE_WEST:
-               segment.x[j] = lx;
-               segment.y[j] = ly;
-               break;
-
-            case STAY:
-               break;
-
-            case MOVE_EAST:
-               segment.x[j] = rx;
-               segment.y[j] = ry;
-               break;
-
-            case MOVE_SW:
-               segment.x[j] = lx;
-               segment.y[j] = dy;
-               break;
-
-            case MOVE_SOUTH:
-               segment.x[j] = dx;
-               segment.y[j] = dy;
-               break;
-
-            case MOVE_SE:
-               segment.x[j] = rx;
-               segment.y[j] = dy;
-               break;
-            }
+            segment = bodySegments[i - 1];
          }
+         segment.setProjectedPosition();
       }
       placeWormOnAgar();
       return(false);
    }
 
 
-   // Get metamorph DB response distances.
-   float[] metamorphDBresponse(Morphognostic morphognostic)
+   // Get metamorph DB response.
+   int metamorphDBresponse(Morphognostic morphognostic, int segmentNumber)
    {
-      float[] responseDistances = new float[NUM_RESPONSES];
-      for (int i = 0; i < NUM_RESPONSES; i++)
+      List<Metamorph> metamorphs;
+      if (segmentNumber == 0)
       {
-         responseDistances[i] = -1.0f;
+         metamorphs = headMetamorphs;
       }
+      else
+      {
+         metamorphs = bodyMetamorphs;
+      }
+      int   response = STAY;
+      float dist     = -1.0f;
       for (Metamorph m : metamorphs)
       {
          float d = morphognostic.compare(m.morphognostic);
-         if (responseDistances[m.response] == -1.0f)
+         if ((dist < 0.0f) || (d < dist))
          {
-            responseDistances[m.response] = d;
+            response = m.response;
+            dist     = d;
          }
          else
          {
-            if (d < responseDistances[m.response])
-            {
-               responseDistances[m.response] = d;
-            }
-            else if (d == responseDistances[m.response])
+            if (d == dist)
             {
                if (random.nextBoolean())
                {
-                  responseDistances[m.response] = d;
+                  response = m.response;
                }
             }
          }
       }
-      return(responseDistances);
+      return(response);
    }
 
 
-   // Get metamorph Weka neural network response probabilities.
-   float[] metamorphWekaNNresponse(Morphognostic morphognostic)
+   // Get metamorph Weka neural network response.
+   int metamorphWekaNNresponse(Morphognostic morphognostic, int segmentNumber)
    {
-      return(classifyMorphognostic(morphognostic));
-   }
-
-
-   // Get metamorph H2O neural network response probabilities.
-   float[] metamorphH2ONNresponse(Morphognostic morphognostic)
-   {
-      float[] responseProbabilities = new float[NUM_RESPONSES];
-      for (int i = 0; i < responseProbabilities.length; i++)
+      if (segmentNumber == 0)
       {
-         responseProbabilities[i] = 0.0f;
+         return(classifyHeadMorphognostic(morphognostic));
       }
+      else
+      {
+         return(classifyBodyMorphognostic(morphognostic));
+      }
+   }
+
+
+   // Get metamorph H2O neural network response.
+   int metamorphH2ONNresponse(Morphognostic morphognostic, int segmentNumber)
+   {
+      int response = STAY;
+
       try {
-         float[] p = H2Opredict.predict(morphognostic2csv(morphognostic) + ",STAY");
+         float[] p;
+         if (segmentNumber == 0)
+         {
+            p = H2OheadPredict.predict(morphognostic2csv(morphognostic) + ",STAY");
+         }
+         else
+         {
+            p = H2ObodyPredict.predict(morphognostic2csv(morphognostic) + ",STAY");
+         }
+         float probability = -1.0f;
          for (int i = 0; i < H2OresponseLabels.length; i++)
          {
-            int j = getResponseValue(H2OresponseLabels[i]);
-            responseProbabilities[j] = p[i];
+            if ((probability < 0.0f) || (p[i] > probability))
+            {
+               probability = p[i];
+               response    = getResponseValue(H2OresponseLabels[i]);
+            }
+            else if (p[i] == probability)
+            {
+               if (random.nextBoolean())
+               {
+                  response = getResponseValue(H2OresponseLabels[i]);
+               }
+            }
          }
       }
       catch (Exception e) {
          System.err.println("H2O prediction failed: " + e.getMessage());
-         return(null);
       }
-      return(responseProbabilities);
+      return(response);
    }
 
 
    // Wormsim response.
    int wormsimResponse(Segment segment)
    {
-      int sx       = segmentSimPositions[segment.number].x;
-      int sy       = segmentSimPositions[segment.number].y;
-      int width    = Agar.GRID_SIZE.width;
-      int height   = Agar.GRID_SIZE.height;
-      int response = -1;
+      int sx = segmentSimPositions[segment.number].x;
+      int sy = segmentSimPositions[segment.number].y;
 
-      for (int i = 0; i < 9 && response == -1; i++)
+      int width  = Agar.GRID_SIZE.width;
+      int height = Agar.GRID_SIZE.height;
+
+      for (int i = 0; i < NUM_DIRECTIONS; i++)
       {
-         int x = segment.x[0];
-         int y = segment.y[0];
+         int x = segment.x;
+         int y = segment.y;
          switch (i)
          {
-         case 0:
+         case NORTHWEST:
             x--;
             if (x < 0) { x += width; }
             y = ((y + 1) % height);
             if ((x == sx) && (y == sy))
             {
-               response = MOVE_NW;
+               return(NORTHWEST);
             }
             break;
 
-         case 1:
+         case NORTH:
             y = ((y + 1) % height);
             if ((x == sx) && (y == sy))
             {
-               response = MOVE_NORTH;
+               return(NORTH);
             }
             break;
 
-         case 2:
+         case NORTHEAST:
             x = ((x + 1) % width);
             y = ((y + 1) % height);
             if ((x == sx) && (y == sy))
             {
-               response = MOVE_NE;
+               return(NORTHEAST);
             }
             break;
 
-         case 3:
+         case WEST:
             x--;
             if (x < 0) { x += width; }
             if ((x == sx) && (y == sy))
             {
-               response = MOVE_WEST;
+               return(WEST);
             }
             break;
 
-         case 4:
+         case CENTER:
             if ((x == sx) && (y == sy))
             {
-               response = STAY;
+               return(STAY);
             }
             break;
 
-         case 5:
+         case EAST:
             x = ((x + 1) % width);
             if ((x == sx) && (y == sy))
             {
-               response = MOVE_EAST;
+               return(EAST);
             }
             break;
 
-         case 6:
+         case SOUTHWEST:
             x--;
             if (x < 0) { x += width; }
             y--;
             if (y < 0) { y += height; }
             if ((x == sx) && (y == sy))
             {
-               response = MOVE_SW;
+               return(SOUTHWEST);
             }
             break;
 
-         case 7:
+         case SOUTH:
             y--;
             if (y < 0) { y += height; }
             if ((x == sx) && (y == sy))
             {
-               response = MOVE_SOUTH;
+               return(SOUTH);
             }
             break;
 
-         case 8:
+         case SOUTHEAST:
             x = ((x + 1) % width);
             y--;
             if (y < 0) { y += height; }
             if ((x == sx) && (y == sy))
             {
-               response = MOVE_SE;
+               return(SOUTHEAST);
             }
             break;
          }
       }
-      if (response == -1) { response = STAY; }
-      return(response);
+      return(STAY);
    }
 
 
-   // Initialize metamorph Weka neural network.
-   public void initMetamorphWekaNN(Morphognostic morphognostic)
+   // Initialize head metamorph Weka neural network.
+   public void initHeadMetamorphWekaNN(Morphognostic morphognostic)
    {
-      metamorphWekaNNattributeNames = new FastVector();
+      headMetamorphWekaNNattributeNames = new FastVector();
       for (int i = 0; i < morphognostic.NUM_NEIGHBORHOODS; i++)
       {
          int n = morphognostic.neighborhoods.get(i).sectors.length;
@@ -1213,7 +1234,7 @@ public class Worm
                {
                   for (int j = 0; j < morphognostic.numEventTypes[d]; j++)
                   {
-                     metamorphWekaNNattributeNames.addElement(new Attribute(i + "-" + x + "-" + y + "-" + d + "-" + j));
+                     headMetamorphWekaNNattributeNames.addElement(new Attribute(i + "-" + x + "-" + y + "-" + d + "-" + j));
                   }
                }
             }
@@ -1224,53 +1245,132 @@ public class Worm
       {
          responseVals.addElement(i + "");
       }
-      metamorphWekaNNattributeNames.addElement(new Attribute("type", responseVals));
-      metamorphWekaInstances = new Instances("metamorphs", metamorphWekaNNattributeNames, 0);
-      metamorphWekaNN        = new MultilayerPerceptron();
+      headMetamorphWekaNNattributeNames.addElement(new Attribute("type", responseVals));
+      headMetamorphWekaInstances = new Instances("head_metamorphs", headMetamorphWekaNNattributeNames, 0);
+      headMetamorphWekaNN        = new MultilayerPerceptron();
    }
 
 
-   // Create and train metamorph neural network.
-   public void createMetamorphWekaNN() throws Exception
+   // Initialize body metamorph Weka neural network.
+   public void initBodyMetamorphWekaNN(Morphognostic morphognostic)
+   {
+      bodyMetamorphWekaNNattributeNames = new FastVector();
+      for (int i = 0; i < morphognostic.NUM_NEIGHBORHOODS; i++)
+      {
+         int n = morphognostic.neighborhoods.get(i).sectors.length;
+         for (int x = 0; x < n; x++)
+         {
+            for (int y = 0; y < n; y++)
+            {
+               for (int d = 0; d < morphognostic.eventDimensions; d++)
+               {
+                  for (int j = 0; j < morphognostic.numEventTypes[d]; j++)
+                  {
+                     bodyMetamorphWekaNNattributeNames.addElement(new Attribute(i + "-" + x + "-" + y + "-" + d + "-" + j));
+                  }
+               }
+            }
+         }
+      }
+      FastVector responseVals = new FastVector();
+      for (int i = 0; i < NUM_RESPONSES; i++)
+      {
+         responseVals.addElement(i + "");
+      }
+      bodyMetamorphWekaNNattributeNames.addElement(new Attribute("type", responseVals));
+      bodyMetamorphWekaInstances = new Instances("body_metamorphs", bodyMetamorphWekaNNattributeNames, 0);
+      bodyMetamorphWekaNN        = new MultilayerPerceptron();
+   }
+
+
+   // Create and train head metamorph neural network.
+   public void createHeadMetamorphWekaNN() throws Exception
    {
       // Create instances.
-      metamorphWekaInstances = new Instances("metamorphs", metamorphWekaNNattributeNames, 0);
-      for (Metamorph m : metamorphs)
+      headMetamorphWekaInstances = new Instances("head_metamorphs", headMetamorphWekaNNattributeNames, 0);
+      for (Metamorph m : headMetamorphs)
       {
-         metamorphWekaInstances.add(createInstance(metamorphWekaInstances, m));
+         headMetamorphWekaInstances.add(createInstance(headMetamorphWekaInstances, m));
       }
-      metamorphWekaInstances.setClassIndex(metamorphWekaInstances.numAttributes() - 1);
+      headMetamorphWekaInstances.setClassIndex(headMetamorphWekaInstances.numAttributes() - 1);
 
       // Create and train the neural network.
       MultilayerPerceptron mlp = new MultilayerPerceptron();
-      metamorphWekaNN = mlp;
+      headMetamorphWekaNN = mlp;
       mlp.setLearningRate(0.1);
       mlp.setMomentum(0.2);
       mlp.setTrainingTime(2000);
       mlp.setHiddenLayers("20");
       mlp.setOptions(Utils.splitOptions("-L 0.1 -M 0.2 -N 2000 -V 0 -S 0 -E 20 -H 20"));
-      mlp.buildClassifier(metamorphWekaInstances);
+      mlp.buildClassifier(headMetamorphWekaInstances);
 
       // Save training instances?
       if (saveMetamorphWekaInstances)
       {
          ArffSaver saver = new ArffSaver();
-         saver.setInstances(metamorphWekaInstances);
-         saver.setFile(new File("metamorphWekaInstances.arff"));
+         saver.setInstances(headMetamorphWekaInstances);
+         saver.setFile(new File("headMetamorphWekaInstances.arff"));
          saver.writeBatch();
       }
 
       // Save networks?
       if (saveMetamorphWekaNN)
       {
-         Debug.saveToFile("metamorphWekaNN.dat", mlp);
+         Debug.saveToFile("headMetamorphWekaNN.dat", mlp);
       }
 
       // Evaluate the network.
       if (evaluateMetamorphWekaNN)
       {
-         Evaluation eval = new Evaluation(metamorphWekaInstances);
-         eval.evaluateModel(mlp, metamorphWekaInstances);
+         Evaluation eval = new Evaluation(headMetamorphWekaInstances);
+         eval.evaluateModel(mlp, headMetamorphWekaInstances);
+         System.out.println("Error rate=" + eval.errorRate());
+         System.out.println(eval.toSummaryString());
+      }
+   }
+
+
+   // Create and train body metamorph neural network.
+   public void createBodyMetamorphWekaNN() throws Exception
+   {
+      // Create instances.
+      bodyMetamorphWekaInstances = new Instances("body_metamorphs", bodyMetamorphWekaNNattributeNames, 0);
+      for (Metamorph m : bodyMetamorphs)
+      {
+         bodyMetamorphWekaInstances.add(createInstance(bodyMetamorphWekaInstances, m));
+      }
+      bodyMetamorphWekaInstances.setClassIndex(bodyMetamorphWekaInstances.numAttributes() - 1);
+
+      // Create and train the neural network.
+      MultilayerPerceptron mlp = new MultilayerPerceptron();
+      bodyMetamorphWekaNN = mlp;
+      mlp.setLearningRate(0.1);
+      mlp.setMomentum(0.2);
+      mlp.setTrainingTime(2000);
+      mlp.setHiddenLayers("20");
+      mlp.setOptions(Utils.splitOptions("-L 0.1 -M 0.2 -N 2000 -V 0 -S 0 -E 20 -H 20"));
+      mlp.buildClassifier(bodyMetamorphWekaInstances);
+
+      // Save training instances?
+      if (saveMetamorphWekaInstances)
+      {
+         ArffSaver saver = new ArffSaver();
+         saver.setInstances(bodyMetamorphWekaInstances);
+         saver.setFile(new File("bodyMetamorphWekaInstances.arff"));
+         saver.writeBatch();
+      }
+
+      // Save networks?
+      if (saveMetamorphWekaNN)
+      {
+         Debug.saveToFile("bodyMetamorphWekaNN.dat", mlp);
+      }
+
+      // Evaluate the network.
+      if (evaluateMetamorphWekaNN)
+      {
+         Evaluation eval = new Evaluation(bodyMetamorphWekaInstances);
+         eval.evaluateModel(mlp, bodyMetamorphWekaInstances);
          System.out.println("Error rate=" + eval.errorRate());
          System.out.println(eval.toSummaryString());
       }
@@ -1307,22 +1407,66 @@ public class Worm
    }
 
 
-   // Save metamorph neural network training dataset.
-   public void saveMetamorphNNtrainingData() throws Exception
+   // Save head metamorph neural network training dataset.
+   public void saveHeadMetamorphNNtrainingData() throws Exception
    {
       FileOutputStream output;
 
       try
       {
-         output = new FileOutputStream(new File(NN_DATASET_SAVE_FILE_NAME));
+         output = new FileOutputStream(new File(HEAD_NN_DATASET_SAVE_FILE_NAME));
       }
       catch (Exception e)
       {
-         throw new IOException("Cannot open output file " + NN_DATASET_SAVE_FILE_NAME + ":" + e.getMessage());
+         throw new IOException("Cannot open output file " + HEAD_NN_DATASET_SAVE_FILE_NAME + ":" + e.getMessage());
       }
       PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
       boolean     header = true;
-      for (Metamorph m : metamorphs)
+      for (Metamorph m : headMetamorphs)
+      {
+         String csv = morphognostic2csv(m.morphognostic);
+         if (m.responseName.isEmpty())
+         {
+            csv += ("," + m.response);
+         }
+         else
+         {
+            csv += ("," + m.responseName);
+         }
+         if (header)
+         {
+            header = false;
+            int    j    = csv.split(",").length - 1;
+            String csv2 = "";
+            for (int i = 0; i < j; i++)
+            {
+               csv2 += ("c" + i + ",");
+            }
+            csv2 += "response";
+            writer.println(csv2);
+         }
+         writer.println(csv);
+      }
+      output.close();
+   }
+
+
+   // Save body metamorph neural network training dataset.
+   public void saveBodyMetamorphNNtrainingData() throws Exception
+   {
+      FileOutputStream output;
+
+      try
+      {
+         output = new FileOutputStream(new File(BODY_NN_DATASET_SAVE_FILE_NAME));
+      }
+      catch (Exception e)
+      {
+         throw new IOException("Cannot open output file " + BODY_NN_DATASET_SAVE_FILE_NAME + ":" + e.getMessage());
+      }
+      PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
+      boolean     header = true;
+      for (Metamorph m : bodyMetamorphs)
       {
          String csv = morphognostic2csv(m.morphognostic);
          if (m.responseName.isEmpty())
@@ -1387,94 +1531,142 @@ public class Worm
    }
 
 
-   // Use metamorph Weka NN to classify morphognostic as a response.
-   public float[] classifyMorphognostic(Morphognostic morphognostic)
+   // Use head metamorph Weka NN to classify morphognostic as a response.
+   public int classifyHeadMorphognostic(Morphognostic morphognostic)
    {
       Metamorph metamorph = new Metamorph(morphognostic, STAY, getResponseName(STAY));
 
-      float[] responseProbabilities = new float[NUM_RESPONSES];
+      //float[] responseProbabilities = new float[NUM_RESPONSES];
+      int response = STAY;
+
       try
       {
          // Classify.
-         Instance instance = createInstance(metamorphWekaInstances, metamorph);
-         //int      predictionIndex = (int)metamorphWekaNN.classifyInstance(instance);
+         Instance instance        = createInstance(headMetamorphWekaInstances, metamorph);
+         int      predictionIndex = (int)headMetamorphWekaNN.classifyInstance(instance);
 
          // Get the predicted class label from the predictionIndex.
-         //String predictedClassLabel = metamorphWekaInstances.classAttribute().value(predictionIndex);
-         //int response = Integer.parseInt(predictedClassLabel);
+         String predictedClassLabel = headMetamorphWekaInstances.classAttribute().value(predictionIndex);
+         response = Integer.parseInt(predictedClassLabel);
 
          // Get the prediction probability distribution.
-         double[] d = metamorphWekaNN.distributionForInstance(instance);
-         for (int i = 0; i < NUM_RESPONSES; i++)
-         {
-            responseProbabilities[i] = (float)d[i];
-         }
+         //double[] d = headMetamorphWekaNN.distributionForInstance(instance);
+         //for (int i = 0; i < NUM_RESPONSES; i++)
+         //{
+         //responseProbabilities[i] = (float)d[i];
+         //}
       }
       catch (Exception e)
       {
-         System.err.println("Error classifying morphognostic: " + e.getMessage());
+         System.err.println("Error classifying head morphognostic: " + e.getMessage());
       }
-      return(responseProbabilities);
+      return(response);
    }
 
 
-   // Response names.
-   public String getResponseName(int response)
+   // Use body metamorph Weka NN to classify morphognostic as a response.
+   public int classifyBodyMorphognostic(Morphognostic morphognostic)
    {
-      switch (response)
+      Metamorph metamorph = new Metamorph(morphognostic, STAY, getResponseName(STAY));
+
+      //float[] responseProbabilities = new float[NUM_RESPONSES];
+      int response = STAY;
+
+      try
       {
-      case MOVE_NW:
-         return("MOVE_NW");
+         // Classify.
+         Instance instance        = createInstance(bodyMetamorphWekaInstances, metamorph);
+         int      predictionIndex = (int)bodyMetamorphWekaNN.classifyInstance(instance);
 
-      case MOVE_NORTH:
-         return("MOVE_NORTH");
+         // Get the predicted class label from the predictionIndex.
+         String predictedClassLabel = bodyMetamorphWekaInstances.classAttribute().value(predictionIndex);
+         response = Integer.parseInt(predictedClassLabel);
 
-      case MOVE_NE:
-         return("MOVE_NE");
+         // Get the prediction probability distribution.
+         //double[] d = bodyMetamorphWekaNN.distributionForInstance(instance);
+         //for (int i = 0; i < NUM_RESPONSES; i++)
+         //{
+         //responseProbabilities[i] = (float)d[i];
+         //}
+      }
+      catch (Exception e)
+      {
+         System.err.println("Error classifying body morphognostic: " + e.getMessage());
+      }
+      return(response);
+   }
 
-      case MOVE_WEST:
-         return("MOVE_WEST");
 
-      case STAY:
-         return("STAY");
+   // Direction names.
+   public static String getDirectionName(int dir)
+   {
+      switch (dir)
+      {
+      case NORTHWEST:
+         return("NORTHWEST");
 
-      case MOVE_EAST:
-         return("MOVE_EAST");
+      case NORTH:
+         return("NORTH");
 
-      case MOVE_SW:
-         return("MOVE_SW");
+      case NORTHEAST:
+         return("NORTHEAST");
 
-      case MOVE_SOUTH:
-         return("MOVE_SOUTH");
+      case WEST:
+         return("WEST");
 
-      case MOVE_SE:
-         return("MOVE_SE");
+      case CENTER:
+         return("CENTER");
+
+      case EAST:
+         return("EAST");
+
+      case SOUTHWEST:
+         return("SOUTHWEST");
+
+      case SOUTH:
+         return("SOUTH");
+
+      case SOUTHEAST:
+         return("SOUTHEAST");
       }
       return("");
    }
 
 
-   // Response value from name.
-   public int getResponseValue(String name)
+   // Response names.
+   public static String getResponseName(int response)
    {
-      if (name.equals("MOVE_NW"))
+      String name = getDirectionName(response);
+
+      if (name.equals("CENTER"))
       {
-         return(MOVE_NW);
+         name = "STAY";
+      }
+      return(name);
+   }
+
+
+   // Response value from name.
+   public static int getResponseValue(String name)
+   {
+      if (name.equals("NORTHWEST"))
+      {
+         return(NORTHWEST);
       }
 
-      if (name.equals("MOVE_NORTH"))
+      if (name.equals("NORTH"))
       {
-         return(MOVE_NORTH);
+         return(NORTH);
       }
 
-      if (name.equals("MOVE_NE"))
+      if (name.equals("NORTHEAST"))
       {
-         return(MOVE_NE);
+         return(NORTHEAST);
       }
 
-      if (name.equals("MOVE_WEST"))
+      if (name.equals("WEST"))
       {
-         return(MOVE_WEST);
+         return(WEST);
       }
 
       if (name.equals("STAY"))
@@ -1482,24 +1674,24 @@ public class Worm
          return(STAY);
       }
 
-      if (name.equals("MOVE_EAST"))
+      if (name.equals("EAST"))
       {
-         return(MOVE_EAST);
+         return(EAST);
       }
 
-      if (name.equals("MOVE_SW"))
+      if (name.equals("SOUTHWEST"))
       {
-         return(MOVE_SW);
+         return(SOUTHWEST);
       }
 
-      if (name.equals("MOVE_SOUTH"))
+      if (name.equals("SOUTH"))
       {
-         return(MOVE_SOUTH);
+         return(SOUTH);
       }
 
-      if (name.equals("MOVE_SE"))
+      if (name.equals("SOUTHEAST"))
       {
-         return(MOVE_SE);
+         return(SOUTHEAST);
       }
 
       return(-1);

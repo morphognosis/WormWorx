@@ -8,13 +8,16 @@ Setup:
 4. Run .sh or .bat commands in the work directory
 
 Notes on using H2O (https://www.h2o.ai) model:
-1. Use worm dashboard to export training csv file after creating metamorphs to learn.
-2. Train wormworx_model using H2O and export h2o-genmodel.jar.
-3. Copy h2o-genmodel.jar to lib directory.
-4. Copy wormworx_model.java to work directory.
-5. Build.
-6. Select metamorphH2ONN as driver on worm dashboard.
-7. Run.
+1. Learn metamorphs using wormsim driver.
+2. Use worm dashboard to export head and body training csv files.
+3. Train wormworx_head_model using H2O.
+4. Export h2o-genmodel.jar and wormworx_head_model.java.
+5. Rename h2o-genmodel.jar to h2o-genmodel-head.jar.
+6. Repeat 3-5 for body model. 
+7. Copy jar and java files to work directory.
+8. Build.
+9. Run.
+10. Select metamorphH2ONN driver on worm dashboard.
 
 References:
 

@@ -55,10 +55,17 @@ public class Display extends JFrame
 
       // Create worm dashboards.
       wormDashboard         = new WormDashboard(worm, this);
-      wormSegmentDashboards = new WormSegmentDashboard[Worm.NUM_SEGMENTS];
-      for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
+      wormSegmentDashboards = new WormSegmentDashboard[Worm.NUM_BODY_SEGMENTS + 1];
+      for (int i = 0; i <= Worm.NUM_BODY_SEGMENTS; i++)
       {
-         wormSegmentDashboards[i] = new WormSegmentDashboard(worm.segments[i], this);
+         if (i == 0)
+         {
+            wormSegmentDashboards[i] = new WormSegmentDashboard(worm.headSegment, this);
+         }
+         else
+         {
+            wormSegmentDashboards[i] = new WormSegmentDashboard(worm.bodySegments[i - 1], this);
+         }
       }
 
       // Set up display.
@@ -118,12 +125,9 @@ public class Display extends JFrame
    {
       if (quit) { return; }
 
-      // Update step counter.
-      controls.updateStepCounter();
-
       // Update worm dashboards.
       wormDashboard.update();
-      for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
+      for (int i = 0; i <= Worm.NUM_BODY_SEGMENTS; i++)
       {
          wormSegmentDashboards[i].update();
       }
@@ -207,8 +211,7 @@ public class Display extends JFrame
       // Update display.
       synchronized void update()
       {
-         int   x, y, x2, y2, width, height;
-         float cellWidth, cellHeight;
+         int x, y, x2, y2, width, height;
 
          if (quit)
          {
@@ -231,10 +234,8 @@ public class Display extends JFrame
          imageGraphics.setColor(Color.white);
          imageGraphics.fillRect(0, 0, canvasSize.width, canvasSize.height);
 
-         width      = Agar.GRID_SIZE.width;
-         height     = Agar.GRID_SIZE.height;
-         cellWidth  = Agar.CELL_WIDTH;
-         cellHeight = Agar.CELL_HEIGHT;
+         width  = Agar.GRID_SIZE.width;
+         height = Agar.GRID_SIZE.height;
 
          // Draw food.
          if (agar.currentSalty != -1)
@@ -256,46 +257,54 @@ public class Display extends JFrame
                break;
             }
             imageGraphics.setColor(new Color(r, g, b, 255));
-            x2 = (int)(agar.saltyX[agar.currentSalty] / cellWidth);
-            x2 = (int)((float)x2 * cellWidth);
-            y2 = (int)(agar.saltyY[agar.currentSalty] / cellHeight);
-            y2 = (int)((float)y2 * cellHeight);
-            imageGraphics.fillRect(x2, y2, (int)cellWidth, (int)cellHeight);
+            x2 = (int)(agar.saltyX[agar.currentSalty] / Agar.CELL_WIDTH);
+            x2 = (int)((float)x2 * Agar.CELL_WIDTH);
+            y2 = height - (int)(agar.saltyY[agar.currentSalty] / Agar.CELL_HEIGHT) - 1;
+            y2 = (int)((float)y2 * Agar.CELL_HEIGHT);
+            imageGraphics.fillRect(x2, y2, (int)Agar.CELL_WIDTH, (int)Agar.CELL_HEIGHT);
             for (x = 0; x < Agar.GRID_SIZE.width; x++)
             {
                for (y = 0; y < Agar.GRID_SIZE.height; y++)
                {
-                  float d = (float)(agar.cells[x][y][Agar.SALT_CELL_INDEX]);
+                  float d = agar.saltCells[x][y];
                   imageGraphics.setColor(new Color(r, g, b, (int)(255.0f * (1.0f / ((0.1f * d) + 1.0f)))));
-                  x2 = (int)((float)x * cellWidth);
-                  y2 = (int)((float)y * cellHeight);
-                  imageGraphics.fillRect(x2, y2, (int)cellWidth, (int)cellHeight);
+                  x2 = (int)((float)x * Agar.CELL_WIDTH);
+                  y2 = (int)((float)(height - y - 1) * Agar.CELL_HEIGHT);
+                  imageGraphics.fillRect(x2, y2, (int)Agar.CELL_WIDTH, (int)Agar.CELL_HEIGHT);
                }
             }
          }
 
-         // Draw worm location.
+         // Draw worm.
          imageGraphics.setColor(Color.gray);
-         for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
+         for (int i = 0; i <= Worm.NUM_BODY_SEGMENTS; i++)
          {
-            x  = worm.segments[i].x[0];
-            y  = worm.segments[i].y[0];
-            x2 = (int)(cellWidth * (double)x);
-            y2 = (int)(cellHeight * (double)(height - (y + 1)));
-            imageGraphics.fillRect(x2, y2, (int)cellWidth, (int)cellHeight);
+            if (i == 0)
+            {
+               x = worm.headSegment.x;
+               y = worm.headSegment.y;
+            }
+            else
+            {
+               x = worm.bodySegments[i - 1].x;
+               y = worm.bodySegments[i - 1].y;
+            }
+            x2 = (int)(Agar.CELL_WIDTH * (float)x);
+            y2 = (int)(Agar.CELL_HEIGHT * (float)(height - (y + 1)));
+            imageGraphics.fillRect(x2, y2, (int)Agar.CELL_WIDTH, (int)Agar.CELL_HEIGHT);
          }
 
          // Draw grid.
          imageGraphics.setColor(Color.black);
          y2 = canvasSize.height;
-         for (x = 1, x2 = (int)cellWidth; x < width;
-              x++, x2 = (int)(cellWidth * (double)x))
+         for (x = 1, x2 = (int)Agar.CELL_WIDTH; x < width;
+              x++, x2 = (int)(Agar.CELL_WIDTH * (float)x))
          {
             imageGraphics.drawLine(x2, 0, x2, y2);
          }
          x2 = canvasSize.width;
-         for (y = 1, y2 = (int)cellHeight; y < height;
-              y++, y2 = (int)(cellHeight * (double)y))
+         for (y = 1, y2 = (int)Agar.CELL_HEIGHT; y < height;
+              y++, y2 = (int)(Agar.CELL_HEIGHT * (float)y))
          {
             imageGraphics.drawLine(0, y2, x2, y2);
          }
@@ -311,24 +320,29 @@ public class Display extends JFrame
          // Mouse pressed.
          public void mousePressed(MouseEvent evt)
          {
-            int    x, y, cx, cy;
-            int    width      = Agar.GRID_SIZE.width;
-            int    height     = Agar.GRID_SIZE.height;
-            double cellWidth  = (double)canvasSize.width / (double)width;
-            double cellHeight = (double)canvasSize.height / (double)height;
+            int x, y, cx, cy;
+            int width  = Agar.GRID_SIZE.width;
+            int height = Agar.GRID_SIZE.height;
 
             // Selecting worm segment?
-            x = (int)((double)evt.getX() / cellWidth);
-            y = height - (int)((double)evt.getY() / cellHeight) - 1;
-
+            x = (int)((double)evt.getX() / Agar.CELL_WIDTH);
+            y = height - (int)((double)evt.getY() / Agar.CELL_HEIGHT) - 1;
             if ((x >= 0) && (x < width) &&
                 (y >= 0) && (y < height))
             {
                boolean segmentSelected = false;
-               for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
+               for (int i = 0; i <= Worm.NUM_BODY_SEGMENTS; i++)
                {
-                  cx = worm.segments[i].x[0];
-                  cy = worm.segments[i].y[0];
+                  if (i == 0)
+                  {
+                     cx = worm.headSegment.x;
+                     cy = worm.headSegment.y;
+                  }
+                  else
+                  {
+                     cx = worm.bodySegments[i - 1].x;
+                     cy = worm.bodySegments[i - 1].y;
+                  }
                   if ((cx == x) && (cy == y))
                   {
                      segmentSelected = true;
@@ -344,7 +358,7 @@ public class Display extends JFrame
                }
                if (!segmentSelected)
                {
-                  for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
+                  for (int i = 0; i <= Worm.NUM_BODY_SEGMENTS; i++)
                   {
                      if (wormSegmentDashboards[i].isVisible())
                      {
@@ -356,7 +370,7 @@ public class Display extends JFrame
                else
                {
                   boolean segmentVisible = false;
-                  for (int i = 0; i < Worm.NUM_SEGMENTS; i++)
+                  for (int i = 0; i <= Worm.NUM_BODY_SEGMENTS; i++)
                   {
                      if (wormSegmentDashboards[i].isVisible())
                      {
@@ -421,7 +435,7 @@ public class Display extends JFrame
          stepButton = new JButton("Step");
          stepButton.addActionListener(this);
          panel.add(stepButton);
-         stepCounter = new JLabel("");
+         stepCounter = new JLabel("Steps: 0");
          panel.add(stepCounter);
          add(panel, BorderLayout.NORTH);
          panel       = new JPanel();
@@ -435,8 +449,8 @@ public class Display extends JFrame
       // Update step counter display
       void updateStepCounter()
       {
-         stepCounter.setText("Steps: " + steps);
          steps++;
+         stepCounter.setText("Steps: " + steps);
       }
 
 
@@ -455,7 +469,8 @@ public class Display extends JFrame
          {
             setStepDelay(MAX_STEP_DELAY);
             speedSlider.setValue(MAX_STEP_DELAY);
-            steps  = 0;
+            steps = 0;
+            stepCounter.setText("Steps: 0");
             random = new SecureRandom();
             random.setSeed(randomSeed);
             worm.reset();

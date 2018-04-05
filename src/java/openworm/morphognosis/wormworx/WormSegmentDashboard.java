@@ -62,59 +62,22 @@ public class WormSegmentDashboard extends JFrame
    // Update dashboard.
    void update()
    {
-      String neighborsString = "";
-      String saltString      = "";
+      String sensorsString = "";
 
-      for (int i = 0; i < 11; i++)
+      if (wormSegment.number == 0)
       {
-         neighborsString += wormSegment.sensors[(i * 2)] + "/" + wormSegment.sensors[(i * 2) + 1];
-         if (i < 10)
-         {
-            neighborsString += ",";
-         }
+         sensorsString = Worm.getDirectionName(wormSegment.sensors[0]);
       }
-      setNeighbors(neighborsString);
-      saltString = wormSegment.sensors[22] + "," + wormSegment.sensors[23] + "," +
-                   wormSegment.sensors[24] + "," + wormSegment.sensors[25];
-      setSalt(saltString);
-      switch (wormSegment.responses[0])
+      else
       {
-      case Worm.MOVE_NW:
-         setResponse("Move NW");
-         break;
-
-      case Worm.MOVE_NORTH:
-         setResponse("Move North");
-         break;
-
-      case Worm.MOVE_NE:
-         setResponse("Move NE");
-         break;
-
-      case Worm.MOVE_WEST:
-         setResponse("Move West");
-         break;
-
-      case Worm.STAY:
-         setResponse("Stay");
-         break;
-
-      case Worm.MOVE_EAST:
-         setResponse("Move East");
-         break;
-
-      case Worm.MOVE_SW:
-         setResponse("Move SW");
-         break;
-
-      case Worm.MOVE_SOUTH:
-         setResponse("Move South");
-         break;
-
-      case Worm.MOVE_SE:
-         setResponse("Move SE");
-         break;
+         sensorsString = Worm.getResponseName(wormSegment.sensors[0]);
       }
+      for (int i = 1; i < wormSegment.sensors.length; i++)
+      {
+         sensorsString += ("," + Worm.getResponseName(wormSegment.sensors[i]));
+      }
+      setSensors(sensorsString);
+      setResponse(Worm.getResponseName(wormSegment.response));
    }
 
 
@@ -133,17 +96,10 @@ public class WormSegmentDashboard extends JFrame
    }
 
 
-   // Set neighbors display.
-   void setNeighbors(String neighborsString)
+   // Set sensors display.
+   void setSensors(String sensorsString)
    {
-      sensorsResponse.neighborsText.setText(neighborsString);
-   }
-
-
-   // Set salt display.
-   void setSalt(String saltString)
-   {
-      sensorsResponse.saltText.setText(saltString);
+      sensorsResponse.sensorsText.setText(sensorsString);
    }
 
 
@@ -160,8 +116,7 @@ public class WormSegmentDashboard extends JFrame
       private static final long serialVersionUID = 0L;
 
       // Components.
-      JTextField neighborsText;
-      JTextField saltText;
+      JTextField sensorsText;
       JTextField responseText;
 
       // Constructor.
@@ -171,20 +126,13 @@ public class WormSegmentDashboard extends JFrame
          setBorder(BorderFactory.createTitledBorder(
                       BorderFactory.createLineBorder(Color.black),
                       "Sensors/Response"));
-         JPanel neighborsPanel = new JPanel();
-         neighborsPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-         add(neighborsPanel, BorderLayout.NORTH);
-         neighborsPanel.add(new JLabel("Neighbors:"));
-         neighborsText = new JTextField(50);
-         neighborsText.setEditable(false);
-         neighborsPanel.add(neighborsText);
-         JPanel saltPanel = new JPanel();
-         saltPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-         add(saltPanel, BorderLayout.CENTER);
-         saltPanel.add(new JLabel("Salt:"));
-         saltText = new JTextField(20);
-         saltText.setEditable(false);
-         saltPanel.add(saltText);
+         JPanel sensorsPanel = new JPanel();
+         sensorsPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+         add(sensorsPanel, BorderLayout.NORTH);
+         sensorsPanel.add(new JLabel("Sensors:"));
+         sensorsText = new JTextField(20);
+         sensorsText.setEditable(false);
+         sensorsPanel.add(sensorsText);
          JPanel responsePanel = new JPanel();
          responsePanel.setLayout(new FlowLayout(FlowLayout.LEFT));
          add(responsePanel, BorderLayout.SOUTH);
