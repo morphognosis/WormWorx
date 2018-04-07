@@ -27,6 +27,7 @@
 package openworm.morphognosis.wormworx;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -179,7 +180,7 @@ public class Main
    public void save(FileOutputStream output) throws IOException
    {
       // Save agar.
-      PrintWriter writer = new PrintWriter(output);
+      DataOutputStream writer = new DataOutputStream(output);
 
       Utility.saveInt(writer, Agar.SIZE.width);
       Utility.saveInt(writer, Agar.SIZE.height);

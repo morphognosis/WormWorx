@@ -9,6 +9,7 @@ import morphognosis.Utility;
 
 import java.awt.*;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -168,7 +169,7 @@ public class Agar
    {
       int x, y;
 
-      PrintWriter writer = new PrintWriter(output);
+      DataOutputStream writer = new DataOutputStream(output);
 
       for (x = 0; x < GRID_SIZE.width; x++)
       {

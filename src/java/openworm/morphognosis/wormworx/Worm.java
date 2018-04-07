@@ -421,7 +421,7 @@ public class Worm
 
       public void save(FileOutputStream output) throws IOException
       {
-         PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
+         DataOutputStream writer = new DataOutputStream(output);
 
          Utility.saveInt(writer, x);
          Utility.saveInt(writer, y);
@@ -740,7 +740,7 @@ public class Worm
       {
          segment.save(output);
       }
-      PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
+      DataOutputStream writer = new DataOutputStream(output);
       Utility.saveInt(writer, eventTime);
       Utility.saveInt(writer, headMetamorphs.size());
       for (Map.Entry < Integer, List < Metamorph >> entry : headMetamorphs.entrySet())
