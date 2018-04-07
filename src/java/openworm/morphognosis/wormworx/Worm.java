@@ -9,7 +9,9 @@ import java.awt.geom.Point2D;
 import java.io.*;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import hex.genmodel.tools.WormWorxBodyPredict;
 import hex.genmodel.tools.WormWorxHeadPredict;
@@ -150,10 +152,10 @@ public class Worm
       public ArrayList<Event> events;
 
       // Metamorphs.
-      public List<Metamorph> metamorphs;
+      public HashMap < Integer, List < Metamorph >> metamorphs;
 
       // Constructors.
-      public Segment(int number, int numSensors, List<Metamorph> metamorphs)
+      public Segment(int number, int numSensors, HashMap < Integer, List < Metamorph >> metamorphs)
       {
          init(number, numSensors, metamorphs);
          int [] numEventTypes = new int[NUM_SENSORS];
@@ -167,7 +169,7 @@ public class Worm
       }
 
 
-      public Segment(int number, int numSensors, List<Metamorph> metamorphs,
+      public Segment(int number, int numSensors, HashMap < Integer, List < Metamorph >> metamorphs,
                      int NUM_NEIGHBORHOODS,
                      int NEIGHBORHOOD_INITIAL_DIMENSION,
                      int NEIGHBORHOOD_DIMENSION_STRIDE,
@@ -193,7 +195,7 @@ public class Worm
       }
 
 
-      void init(int number, int numSensors, List<Metamorph> metamorphs)
+      void init(int number, int numSensors, HashMap < Integer, List < Metamorph >> metamorphs)
       {
          this.number     = number;
          NUM_SENSORS     = numSensors;
@@ -305,32 +307,38 @@ public class Worm
          projectResponsePosition();
 
          // Update metamorphs.
-         Metamorph metamorph = new Metamorph(morphognostic.clone(), response, getResponseName(response));
-         boolean   found     = false;
-         boolean   dup       = false;
-         for (Metamorph m : metamorphs)
+         Metamorph       metamorph         = new Metamorph(morphognostic.clone(), response, getResponseName(response));
+         int             morphognosticHash = hashMorphognostic(metamorph.morphognostic);
+         List<Metamorph> metamorphValues   = metamorphs.get(morphognosticHash);
+         if (metamorphValues != null)
          {
-            if (m.morphognostic.compare(metamorph.morphognostic) == 0.0f)
+            boolean found = false;
+            boolean dup   = false;
+            for (Metamorph m : metamorphValues)
             {
                if (m.response == metamorph.response)
                {
                   found = true;
-                  break;
                }
                else
                {
                   dup = true;
                }
-               break;
+            }
+            if (!found)
+            {
+               if (dup)
+               {
+                  System.out.println("Warning: metamorph with same morphognostic and different response added");
+               }
+               metamorphValues.add(metamorph);
             }
          }
-         if (!found)
+         else
          {
-            if (dup)
-            {
-               System.out.println("Warning: metamorph with identical existing morphognostic and different response added");
-            }
-            metamorphs.add(metamorph);
+            ArrayList<Metamorph> metamorphList = new ArrayList<Metamorph>();
+            metamorphList.add(metamorph);
+            metamorphs.put(morphognosticHash, metamorphList);
          }
          return(response);
       }
@@ -445,13 +453,13 @@ public class Worm
       public static final int NUM_HEAD_SENSORS = 2;
 
       // Constructors.
-      public HeadSegment(int number, List<Metamorph> headMetamorphs)
+      public HeadSegment(int number, HashMap < Integer, List < Metamorph >> headMetamorphs)
       {
          super(number, NUM_HEAD_SENSORS, headMetamorphs);
       }
 
 
-      public HeadSegment(int number, List<Metamorph> headMetamorphs,
+      public HeadSegment(int number, HashMap < Integer, List < Metamorph >> headMetamorphs,
                          int NUM_NEIGHBORHOODS,
                          int NEIGHBORHOOD_INITIAL_DIMENSION,
                          int NEIGHBORHOOD_DIMENSION_STRIDE,
@@ -475,14 +483,14 @@ public class Worm
       // Anterior segment current and next directions.
       public static final int NUM_BODY_SENSORS = 3;
 
-      public BodySegment(int number, List<Metamorph> bodyMetamorphs)
+      public BodySegment(int number, HashMap < Integer, List < Metamorph >> bodyMetamorphs)
       {
          super(number, NUM_BODY_SENSORS, bodyMetamorphs);
       }
 
 
       // Constructors.
-      public BodySegment(int number, List<Metamorph> bodyMetamorphs,
+      public BodySegment(int number, HashMap < Integer, List < Metamorph >> bodyMetamorphs,
                          int NUM_NEIGHBORHOODS,
                          int NEIGHBORHOOD_INITIAL_DIMENSION,
                          int NEIGHBORHOOD_DIMENSION_STRIDE,
@@ -511,8 +519,8 @@ public class Worm
    public Point[] segmentSimPositions;
 
    // Metamorphs.
-   public ArrayList<Metamorph> headMetamorphs;
-   public ArrayList<Metamorph> bodyMetamorphs;
+   public                      HashMap < Integer, List < Metamorph >> headMetamorphs;
+   public                      HashMap < Integer, List < Metamorph >> bodyMetamorphs;
    public FastVector           headMetamorphWekaNNattributeNames;
    public FastVector           bodyMetamorphWekaNNattributeNames;
    public Instances            headMetamorphWekaInstances;
@@ -531,9 +539,9 @@ public class Worm
    public Worm(Agar agar, int randomSeed)
    {
       init(agar, randomSeed);
-      headMetamorphs = new ArrayList<Metamorph>();
+      headMetamorphs = new HashMap < Integer, List < Metamorph >> ();
       headSegment    = new HeadSegment(0, headMetamorphs);
-      bodyMetamorphs = new ArrayList<Metamorph>();
+      bodyMetamorphs = new HashMap < Integer, List < Metamorph >> ();
       bodySegments   = new BodySegment[NUM_BODY_SEGMENTS];
       for (int i = 0; i < NUM_BODY_SEGMENTS; i++)
       {
@@ -556,7 +564,7 @@ public class Worm
                int EPOCH_INTERVAL_MULTIPLIER)
    {
       init(agar, randomSeed);
-      headMetamorphs = new ArrayList<Metamorph>();
+      headMetamorphs = new HashMap < Integer, List < Metamorph >> ();
       headSegment    = new HeadSegment(0, headMetamorphs,
                                        NUM_NEIGHBORHOODS,
                                        NEIGHBORHOOD_INITIAL_DIMENSION,
@@ -564,7 +572,7 @@ public class Worm
                                        NEIGHBORHOOD_DIMENSION_MULTIPLIER,
                                        EPOCH_INTERVAL_STRIDE,
                                        EPOCH_INTERVAL_MULTIPLIER);
-      bodyMetamorphs = new ArrayList<Metamorph>();
+      bodyMetamorphs = new HashMap < Integer, List < Metamorph >> ();
       bodySegments   = new BodySegment[NUM_BODY_SEGMENTS];
       for (int i = 0; i < NUM_BODY_SEGMENTS; i++)
       {
@@ -735,14 +743,28 @@ public class Worm
       PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
       Utility.saveInt(writer, eventTime);
       Utility.saveInt(writer, headMetamorphs.size());
-      for (Metamorph m : headMetamorphs)
+      for (Map.Entry < Integer, List < Metamorph >> entry : headMetamorphs.entrySet())
       {
-         m.save(output);
+         int morphognosticHash = entry.getKey();
+         Utility.saveInt(writer, morphognosticHash);
+         List<Metamorph> metamorphList = entry.getValue();
+         Utility.saveInt(writer, metamorphList.size());
+         for (Metamorph m : metamorphList)
+         {
+            m.save(output);
+         }
       }
       Utility.saveInt(writer, bodyMetamorphs.size());
-      for (Metamorph m : bodyMetamorphs)
+      for (Map.Entry < Integer, List < Metamorph >> entry : bodyMetamorphs.entrySet())
       {
-         m.save(output);
+         int morphognosticHash = entry.getKey();
+         Utility.saveInt(writer, morphognosticHash);
+         List<Metamorph> metamorphList = entry.getValue();
+         Utility.saveInt(writer, metamorphList.size());
+         for (Metamorph m : metamorphList)
+         {
+            m.save(output);
+         }
       }
       Utility.saveInt(writer, driver);
       writer.flush();
@@ -781,13 +803,27 @@ public class Worm
       int n = Utility.loadInt(reader);
       for (int i = 0; i < n; i++)
       {
-         headMetamorphs.add(Metamorph.load(input));
+         int morphognosticHash = Utility.loadInt(reader);
+         int n2 = Utility.loadInt(reader);
+         ArrayList<Metamorph> metamorphList = new ArrayList<Metamorph>();
+         for (int j = 0; j < n2; j++)
+         {
+            metamorphList.add(Metamorph.load(input));
+         }
+         headMetamorphs.put(morphognosticHash, metamorphList);
       }
       bodyMetamorphs.clear();
       n = Utility.loadInt(reader);
       for (int i = 0; i < n; i++)
       {
-         bodyMetamorphs.add(Metamorph.load(input));
+         int morphognosticHash = Utility.loadInt(reader);
+         int n2 = Utility.loadInt(reader);
+         ArrayList<Metamorph> metamorphList = new ArrayList<Metamorph>();
+         for (int j = 0; j < n2; j++)
+         {
+            metamorphList.add(Metamorph.load(input));
+         }
+         bodyMetamorphs.put(morphognosticHash, metamorphList);
       }
       Morphognostic morphognostic = headSegment.morphognostic;
       initHeadMetamorphWekaNN(morphognostic);
@@ -1031,7 +1067,7 @@ public class Worm
    // Get metamorph DB response.
    int metamorphDBresponse(Morphognostic morphognostic, int segmentNumber)
    {
-      List<Metamorph> metamorphs;
+      HashMap < Integer, List < Metamorph >> metamorphs;
       if (segmentNumber == 0)
       {
          metamorphs = headMetamorphs;
@@ -1040,28 +1076,72 @@ public class Worm
       {
          metamorphs = bodyMetamorphs;
       }
-      int   response = STAY;
-      float dist     = -1.0f;
-      for (Metamorph m : metamorphs)
+      ArrayList<Integer> responses         = new ArrayList<Integer>();
+      int                morphognosticHash = hashMorphognostic(morphognostic);
+      List<Metamorph>    metamorphValues   = metamorphs.get(morphognosticHash);
+      if (metamorphValues != null)
       {
-         float d = morphognostic.compare(m.morphognostic);
-         if ((dist < 0.0f) || (d < dist))
+         for (Metamorph m : metamorphValues)
          {
-            response = m.response;
-            dist     = d;
+            responses.add(m.response);
          }
-         else
+      }
+      else
+      {
+         float dist = -1.0f;
+         for (List<Metamorph> metamorphList : metamorphs.values())
          {
-            if (d == dist)
+            for (Metamorph m : metamorphList)
             {
-               if (random.nextBoolean())
+               float d = morphognostic.compare(m.morphognostic);
+               if ((dist < 0.0f) || (d < dist))
                {
-                  response = m.response;
+                  responses.clear();
+                  responses.add(m.response);
+                  dist = d;
+               }
+               else
+               {
+                  if (d == dist)
+                  {
+                     responses.add(m.response);
+                  }
                }
             }
          }
       }
+      int response = STAY;
+      if (responses.size() > 0)
+      {
+         response = responses.get(random.nextInt(responses.size()));
+      }
       return(response);
+   }
+
+
+   // Hash morphognostic.
+   public int hashMorphognostic(Morphognostic morphognostic)
+   {
+      ArrayList<Float> densities = new ArrayList<Float>();
+      for (int i = 0; i < morphognostic.NUM_NEIGHBORHOODS; i++)
+      {
+         int n = morphognostic.neighborhoods.get(i).sectors.length;
+         for (int x = 0; x < n; x++)
+         {
+            for (int y = 0; y < n; y++)
+            {
+               Morphognostic.Neighborhood.Sector s = morphognostic.neighborhoods.get(i).sectors[x][y];
+               for (int d = 0; d < morphognostic.eventDimensions; d++)
+               {
+                  for (int j = 0; j < s.typeDensities[d].length; j++)
+                  {
+                     densities.add(s.typeDensities[d][j]);
+                  }
+               }
+            }
+         }
+      }
+      return(densities.hashCode());
    }
 
 
@@ -1288,9 +1368,12 @@ public class Worm
    {
       // Create instances.
       headMetamorphWekaInstances = new Instances("head_metamorphs", headMetamorphWekaNNattributeNames, 0);
-      for (Metamorph m : headMetamorphs)
+      for (List<Metamorph> metamorphList : headMetamorphs.values())
       {
-         headMetamorphWekaInstances.add(createInstance(headMetamorphWekaInstances, m));
+         for (Metamorph m : metamorphList)
+         {
+            headMetamorphWekaInstances.add(createInstance(headMetamorphWekaInstances, m));
+         }
       }
       headMetamorphWekaInstances.setClassIndex(headMetamorphWekaInstances.numAttributes() - 1);
 
@@ -1335,9 +1418,12 @@ public class Worm
    {
       // Create instances.
       bodyMetamorphWekaInstances = new Instances("body_metamorphs", bodyMetamorphWekaNNattributeNames, 0);
-      for (Metamorph m : bodyMetamorphs)
+      for (List<Metamorph> metamorphList : bodyMetamorphs.values())
       {
-         bodyMetamorphWekaInstances.add(createInstance(bodyMetamorphWekaInstances, m));
+         for (Metamorph m : metamorphList)
+         {
+            bodyMetamorphWekaInstances.add(createInstance(bodyMetamorphWekaInstances, m));
+         }
       }
       bodyMetamorphWekaInstances.setClassIndex(bodyMetamorphWekaInstances.numAttributes() - 1);
 
@@ -1422,30 +1508,33 @@ public class Worm
       }
       PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
       boolean     header = true;
-      for (Metamorph m : headMetamorphs)
+      for (List<Metamorph> metamorphList : headMetamorphs.values())
       {
-         String csv = morphognostic2csv(m.morphognostic);
-         if (m.responseName.isEmpty())
+         for (Metamorph m : metamorphList)
          {
-            csv += ("," + m.response);
-         }
-         else
-         {
-            csv += ("," + m.responseName);
-         }
-         if (header)
-         {
-            header = false;
-            int    j    = csv.split(",").length - 1;
-            String csv2 = "";
-            for (int i = 0; i < j; i++)
+            String csv = morphognostic2csv(m.morphognostic);
+            if (m.responseName.isEmpty())
             {
-               csv2 += ("c" + i + ",");
+               csv += ("," + m.response);
             }
-            csv2 += "response";
-            writer.println(csv2);
+            else
+            {
+               csv += ("," + m.responseName);
+            }
+            if (header)
+            {
+               header = false;
+               int    j    = csv.split(",").length - 1;
+               String csv2 = "";
+               for (int i = 0; i < j; i++)
+               {
+                  csv2 += ("c" + i + ",");
+               }
+               csv2 += "response";
+               writer.println(csv2);
+            }
+            writer.println(csv);
          }
-         writer.println(csv);
       }
       output.close();
    }
@@ -1466,30 +1555,33 @@ public class Worm
       }
       PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
       boolean     header = true;
-      for (Metamorph m : bodyMetamorphs)
+      for (List<Metamorph> metamorphList : bodyMetamorphs.values())
       {
-         String csv = morphognostic2csv(m.morphognostic);
-         if (m.responseName.isEmpty())
+         for (Metamorph m : metamorphList)
          {
-            csv += ("," + m.response);
-         }
-         else
-         {
-            csv += ("," + m.responseName);
-         }
-         if (header)
-         {
-            header = false;
-            int    j    = csv.split(",").length - 1;
-            String csv2 = "";
-            for (int i = 0; i < j; i++)
+            String csv = morphognostic2csv(m.morphognostic);
+            if (m.responseName.isEmpty())
             {
-               csv2 += ("c" + i + ",");
+               csv += ("," + m.response);
             }
-            csv2 += "response";
-            writer.println(csv2);
+            else
+            {
+               csv += ("," + m.responseName);
+            }
+            if (header)
+            {
+               header = false;
+               int    j    = csv.split(",").length - 1;
+               String csv2 = "";
+               for (int i = 0; i < j; i++)
+               {
+                  csv2 += ("c" + i + ",");
+               }
+               csv2 += "response";
+               writer.println(csv2);
+            }
+            writer.println(csv);
          }
-         writer.println(csv);
       }
       output.close();
    }

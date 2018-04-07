@@ -405,8 +405,7 @@ public class Main
                   System.err.println(Usage);
                   System.exit(1);
                }
-               i      += 2;
-               gotParm = true;
+               i += 2;
             }
             else
             {
