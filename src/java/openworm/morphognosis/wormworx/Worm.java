@@ -831,7 +831,7 @@ public class Worm
       int width, height, x, y;
 
       // Check if food found.
-      if (agar.saltCells[headSegment.x][headSegment.y] <= Agar.SALT_CONSUMPTION_RANGE)
+      if (agar.foodCells[headSegment.x][headSegment.y] <= Agar.FOOD_CONSUMPTION_RANGE)
       {
          foundFood = true;
       }
@@ -845,7 +845,7 @@ public class Worm
       {
          double dorsal  = 1.0;
          double ventral = 1.0;
-         switch (agar.currentSalty)
+         switch (agar.currentFood)
          {
          case Agar.RED_FOOD:
             dorsal = 1.5;
@@ -909,7 +909,7 @@ public class Worm
          {
             // Initialize sensors.
             int[] sensors = new int[headSegment.NUM_SENSORS];
-            float dist = agar.saltCells[headSegment.x][headSegment.y];
+            float dist = agar.foodCells[headSegment.x][headSegment.y];
             float d    = 0.0f;
             int   dir  = CENTER;
             for (int j = 0; j < NUM_DIRECTIONS; j++)
@@ -917,39 +917,39 @@ public class Worm
                switch (j)
                {
                case NORTHWEST:
-                  d = agar.saltCells[wx][ny];
+                  d = agar.foodCells[wx][ny];
                   break;
 
                case NORTH:
-                  d = agar.saltCells[nx][ny];
+                  d = agar.foodCells[nx][ny];
                   break;
 
                case NORTHEAST:
-                  d = agar.saltCells[ex][ny];
+                  d = agar.foodCells[ex][ny];
                   break;
 
                case WEST:
-                  d = agar.saltCells[wx][wy];
+                  d = agar.foodCells[wx][wy];
                   break;
 
                case CENTER:
-                  d = agar.saltCells[headSegment.x][headSegment.y];
+                  d = agar.foodCells[headSegment.x][headSegment.y];
                   break;
 
                case EAST:
-                  d = agar.saltCells[ex][ey];
+                  d = agar.foodCells[ex][ey];
                   break;
 
                case SOUTHWEST:
-                  d = agar.saltCells[wx][sy];
+                  d = agar.foodCells[wx][sy];
                   break;
 
                case SOUTH:
-                  d = agar.saltCells[sx][sy];
+                  d = agar.foodCells[sx][sy];
                   break;
 
                case SOUTHEAST:
-                  d = agar.saltCells[ex][sy];
+                  d = agar.foodCells[ex][sy];
                   break;
                }
                if (d < dist)

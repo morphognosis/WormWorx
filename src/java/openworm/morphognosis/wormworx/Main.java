@@ -52,7 +52,7 @@ public class Main
       "    java openworm.morphognosis.wormworx.Main\n" +
       "      -steps <steps> | -display\n" +
       "     [-agarSize <width> <height> (default=" + Agar.SIZE.width + " " + Agar.SIZE.height + ")]\n" +
-      "     [-foodColor <red | green | blue> (default=red)]\n" +
+      "     [-foodColor <red | green | blue> (default=red) |\n\t<color1>.<steps>.<color2> (transition from color1 to color2 after specified steps)]\n" +
       "     [-driver <metamorphDB | metamorphWekaNN | metamorphH2ONN | wormsim> (worm driver: default=wormsim)]\n" +
       "     [-wormsimSMBmuscleAmplifierOverrides <dorsal> <ventral> (defaults=1.0)]\n" +
       "     [-numNeighborhoods <quantity> (default=" + Morphognostic.DEFAULT_NUM_NEIGHBORHOODS + ")]\n" +
@@ -68,7 +68,7 @@ public class Main
       "    java openworm.morphognosis.wormworx.Main\n" +
       "      -steps <steps> | -display\n" +
       "      -load <file name>\n" +
-      "     [-foodColor <red | green | blue> (default=red)]\n" +
+      "     [-foodColor <red | green | blue> (default=red) |\n\t<color1>.<steps>.<color2> (transition from color1 to color2 after specified steps)]\n" +
       "     [-driver <metamorphDB | metamorphNN | wormsim> (default=wormsim)]\n" +
       "     [-wormsimSMBmuscleAmplifierOverrides <dorsal> <ventral> (defaults=1.0)]\n" +
       "     [-randomSeed <random number seed>]\n" +
@@ -84,6 +84,8 @@ public class Main
    // Agar and food color.
    public Agar agar;
    public int  foodColor;
+   public int  foodSteps;
+   public int  foodColor2;
 
    // Display.
    public Display display;
@@ -93,9 +95,11 @@ public class Main
    SecureRandom random;
 
    // Constructor.
-   public Main(int foodColor, int randomSeed)
+   public Main(int foodColor, int foodSteps, int foodColor2, int randomSeed)
    {
       this.foodColor  = foodColor;
+      this.foodSteps  = foodSteps;
+      this.foodColor2 = foodColor2;
       this.randomSeed = randomSeed;
       random          = new SecureRandom();
       random.setSeed(randomSeed);
@@ -241,6 +245,10 @@ public class Main
       {
          for ( ; steps > 0; steps--)
          {
+            if ((foodSteps != -1) && (worm.eventTime == foodSteps))
+            {
+               agar.setFood(foodColor2);
+            }
             result = worm.step();
          }
       }
@@ -248,6 +256,10 @@ public class Main
       {
          while (updateDisplay())
          {
+            if ((foodSteps != -1) && (worm.eventTime == foodSteps))
+            {
+               agar.setFood(foodColor2);
+            }
             if (result = worm.step())
             {
                display.stepDelay = Display.MAX_STEP_DELAY;
@@ -317,6 +329,8 @@ public class Main
       // Get options.
       int     steps             = -1;
       int     foodColor         = Agar.RED_FOOD;
+      int     foodColor2        = -1;
+      int     foodSteps         = -1;
       int     driver            = Worm.DRIVER_TYPE.WORMSIM.getValue();
       int     randomSeed        = DEFAULT_RANDOM_SEED;
       String  loadfile          = null;
@@ -429,23 +443,45 @@ public class Main
                System.err.println(Usage);
                System.exit(1);
             }
-            if (args[i].equals("red"))
+            if ((foodColor = Agar.foodColorNameTofoodColor(args[i])) == -1)
             {
-               foodColor = Agar.RED_FOOD;
-            }
-            else if (args[i].equals("green"))
-            {
-               foodColor = Agar.GREEN_FOOD;
-            }
-            else if (args[i].equals("blue"))
-            {
-               foodColor = Agar.BLUE_FOOD;
-            }
-            else
-            {
-               System.err.println("Invalid foodColor option");
-               System.err.println(Usage);
-               System.exit(1);
+               String[] parts = args[i].split("\\.");
+               if ((parts != null) && (parts.length == 3))
+               {
+                  if ((foodColor = Agar.foodColorNameTofoodColor(parts[0])) == -1)
+                  {
+                     System.err.println("Invalid foodColor option");
+                     System.err.println(Usage);
+                     System.exit(1);
+                  }
+                  try
+                  {
+                     foodSteps = Integer.parseInt(parts[1]);
+                  }
+                  catch (NumberFormatException e) {
+                     System.err.println("Invalid foodColor option");
+                     System.err.println(Usage);
+                     System.exit(1);
+                  }
+                  if (foodSteps < 0)
+                  {
+                     System.err.println("Invalid foodColor option");
+                     System.err.println(Usage);
+                     System.exit(1);
+                  }
+                  if ((foodColor2 = Agar.foodColorNameTofoodColor(parts[2])) == -1)
+                  {
+                     System.err.println("Invalid foodColor option");
+                     System.err.println(Usage);
+                     System.exit(1);
+                  }
+               }
+               else
+               {
+                  System.err.println("Invalid foodColor option");
+                  System.err.println(Usage);
+                  System.exit(1);
+               }
             }
             continue;
          }
@@ -738,7 +774,7 @@ public class Main
       }
 
       // Create world.
-      Main main = new Main(foodColor, randomSeed);
+      Main main = new Main(foodColor, foodSteps, foodColor2, randomSeed);
       if (loadfile != null)
       {
          try

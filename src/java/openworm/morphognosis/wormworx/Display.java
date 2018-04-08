@@ -238,11 +238,11 @@ public class Display extends JFrame
          height = Agar.GRID_SIZE.height;
 
          // Draw food.
-         if (agar.currentSalty != -1)
+         if (agar.currentFood != -1)
          {
             int r, g, b;
             r = g = b = 0;
-            switch (agar.currentSalty)
+            switch (agar.currentFood)
             {
             case 0:
                r = 255;
@@ -257,16 +257,16 @@ public class Display extends JFrame
                break;
             }
             imageGraphics.setColor(new Color(r, g, b, 255));
-            x2 = (int)(agar.saltyX[agar.currentSalty] / Agar.CELL_WIDTH);
+            x2 = (int)(agar.foodX[agar.currentFood] / Agar.CELL_WIDTH);
             x2 = (int)((float)x2 * Agar.CELL_WIDTH);
-            y2 = height - (int)(agar.saltyY[agar.currentSalty] / Agar.CELL_HEIGHT) - 1;
+            y2 = height - (int)(agar.foodY[agar.currentFood] / Agar.CELL_HEIGHT) - 1;
             y2 = (int)((float)y2 * Agar.CELL_HEIGHT);
             imageGraphics.fillRect(x2, y2, (int)Agar.CELL_WIDTH, (int)Agar.CELL_HEIGHT);
             for (x = 0; x < Agar.GRID_SIZE.width; x++)
             {
                for (y = 0; y < Agar.GRID_SIZE.height; y++)
                {
-                  float d = agar.saltCells[x][y];
+                  float d = agar.foodCells[x][y];
                   imageGraphics.setColor(new Color(r, g, b, (int)(255.0f * (1.0f / ((0.1f * d) + 1.0f)))));
                   x2 = (int)((float)x * Agar.CELL_WIDTH);
                   y2 = (int)((float)(height - y - 1) * Agar.CELL_HEIGHT);

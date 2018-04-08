@@ -42,7 +42,7 @@ public class Agar
    // See SectorDisplay.EMPTY_CELL_VALUE.
    public static final int WORM_SEGMENT_VALUE = 1;
    public int[][]          wormCells;
-   public float[][]        saltCells;
+   public float[][]        foodCells;
 
    // Transforms.
    public static final float SCALE = 0.12f;
@@ -52,11 +52,11 @@ public class Agar
    public static final int   RED_FOOD   = 0;
    public static final int   GREEN_FOOD = 1;
    public static final int   BLUE_FOOD  = 2;
-   public static final int   NUM_SALTY  = 3;
-   public double[]           saltyX;
-   public double[]           saltyY;
-   public int                currentSalty;
-   public static final float SALT_CONSUMPTION_RANGE = 5.0f;
+   public static final int   NUM_FOOD   = 3;
+   public double[]           foodX;
+   public double[]           foodY;
+   public int                currentFood;
+   public static final float FOOD_CONSUMPTION_RANGE = 5.0f;
 
    // Constructors.
    public Agar(int foodColor)
@@ -67,20 +67,20 @@ public class Agar
       float w = (float)SIZE.width;
       float h = (float)SIZE.height;
 
-      x_off     = w * 0.775f;
-      y_off     = h * 0.5f;
-      saltyX    = new double[NUM_SALTY];
-      saltyY    = new double[NUM_SALTY];
-      saltyX[0] = -w * 5.0f;
-      saltyY[0] = h * 1.5f;
-      saltyX[1] = -w * 6.0f;
-      saltyY[1] = 0.0f;
-      saltyX[2] = -w * 5.0f;
-      saltyY[2] = -h * 1.5f;
-      for (int i = 0; i < NUM_SALTY; i++)
+      x_off    = w * 0.775f;
+      y_off    = h * 0.5f;
+      foodX    = new double[NUM_FOOD];
+      foodY    = new double[NUM_FOOD];
+      foodX[0] = -w * 5.0f;
+      foodY[0] = h * 1.5f;
+      foodX[1] = -w * 6.0f;
+      foodY[1] = 0.0f;
+      foodX[2] = -w * 5.0f;
+      foodY[2] = -h * 1.5f;
+      for (int i = 0; i < NUM_FOOD; i++)
       {
-         saltyX[i] = (saltyX[i] * SCALE) + x_off;
-         saltyY[i] = (saltyY[i] * SCALE) + y_off;
+         foodX[i] = (foodX[i] * SCALE) + x_off;
+         foodY[i] = (foodY[i] * SCALE) + y_off;
       }
 
       // Create cells.
@@ -92,35 +92,35 @@ public class Agar
             wormCells[x][y] = SectorDisplay.EMPTY_CELL_VALUE;
          }
       }
-      saltCells = new float[GRID_SIZE.width][GRID_SIZE.height];
-      setSalty(foodColor);
+      foodCells = new float[GRID_SIZE.width][GRID_SIZE.height];
+      setFood(foodColor);
    }
 
 
-   // Set salt distances.
-   public void setSaltDist()
+   // Set food distances.
+   public void setFoodDist()
    {
       int x, y;
 
-      if (currentSalty == -1)
+      if (currentFood == -1)
       {
          for (x = 0; x < GRID_SIZE.width; x++)
          {
             for (y = 0; y < GRID_SIZE.height; y++)
             {
-               saltCells[x][y] = -1.0f;
+               foodCells[x][y] = -1.0f;
             }
          }
       }
       else
       {
-         int sx = (int)(saltyX[currentSalty] / CELL_WIDTH);
-         int sy = (int)(saltyY[currentSalty] / CELL_HEIGHT);
+         int sx = (int)(foodX[currentFood] / CELL_WIDTH);
+         int sy = (int)(foodY[currentFood] / CELL_HEIGHT);
          for (x = 0; x < GRID_SIZE.width; x++)
          {
             for (y = 0; y < GRID_SIZE.height; y++)
             {
-               saltCells[x][y] = cellDist((float)sx, (float)sy, (float)x, (float)y);
+               foodCells[x][y] = cellDist((float)sx, (float)sy, (float)x, (float)y);
             }
          }
       }
@@ -139,11 +139,11 @@ public class Agar
    }
 
 
-   // Set salty food.
-   public void setSalty(int saltyIndex)
+   // Set food.
+   public void setFood(int foodColor)
    {
-      currentSalty = saltyIndex;
-      setSaltDist();
+      currentFood = foodColor;
+      setFoodDist();
    }
 
 
@@ -192,7 +192,7 @@ public class Agar
       }
       load(input);
       input.close();
-      setSaltDist();
+      setFoodDist();
    }
 
 
@@ -224,5 +224,24 @@ public class Agar
             wormCells[x][y] = SectorDisplay.EMPTY_CELL_VALUE;
          }
       }
+   }
+
+
+   // Convert food color name to food color.
+   public static int foodColorNameTofoodColor(String name)
+   {
+      if (name.equals("red"))
+      {
+         return(RED_FOOD);
+      }
+      else if (name.equals("green"))
+      {
+         return(GREEN_FOOD);
+      }
+      else if (name.equals("blue"))
+      {
+         return(BLUE_FOOD);
+      }
+      return(-1);
    }
 }
