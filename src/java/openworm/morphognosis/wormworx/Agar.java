@@ -8,13 +8,14 @@ import morphognosis.SectorDisplay;
 import morphognosis.Utility;
 
 import java.awt.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 
 public class Agar
 {
@@ -149,11 +150,11 @@ public class Agar
    // Save cells.
    public void save(String filename) throws IOException
    {
-      FileOutputStream output;
+      DataOutputStream output;
 
       try
       {
-         output = new FileOutputStream(new File(filename));
+         output = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
       }
       catch (Exception e)
       {
@@ -165,17 +166,13 @@ public class Agar
 
 
    // Save cells.
-   public void save(FileOutputStream output) throws IOException
+   public void save(DataOutputStream output) throws IOException
    {
-      int x, y;
-
-      DataOutputStream writer = new DataOutputStream(output);
-
-      for (x = 0; x < GRID_SIZE.width; x++)
+      for (int x = 0; x < GRID_SIZE.width; x++)
       {
-         for (y = 0; y < GRID_SIZE.height; y++)
+         for (int y = 0; y < GRID_SIZE.height; y++)
          {
-            Utility.saveInt(writer, wormCells[x][y]);
+            Utility.saveInt(output, wormCells[x][y]);
          }
       }
    }
@@ -184,10 +181,10 @@ public class Agar
    // Load cells from file.
    public void load(String filename) throws IOException
    {
-      FileInputStream input;
+      DataInputStream input;
 
       try {
-         input = new FileInputStream(new File(filename));
+         input = new DataInputStream(new BufferedInputStream(new FileInputStream(new File(filename))));
       }
       catch (Exception e)
       {
@@ -200,20 +197,16 @@ public class Agar
 
 
    // Load cells.
-   public void load(FileInputStream input) throws IOException
+   public void load(DataInputStream input) throws IOException
    {
-      int x, y;
-
-      DataInputStream reader = new DataInputStream(input);
-
       wormCells = new int[GRID_SIZE.width][GRID_SIZE.height];
       clear();
 
-      for (x = 0; x < GRID_SIZE.width; x++)
+      for (int x = 0; x < GRID_SIZE.width; x++)
       {
-         for (y = 0; y < GRID_SIZE.height; y++)
+         for (int y = 0; y < GRID_SIZE.height; y++)
          {
-            wormCells[x][y] = Utility.loadInt(reader);
+            wormCells[x][y] = Utility.loadInt(input);
          }
       }
    }

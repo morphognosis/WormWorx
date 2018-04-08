@@ -419,29 +419,24 @@ public class Worm
       }
 
 
-      public void save(FileOutputStream output) throws IOException
+      public void save(DataOutputStream output) throws IOException
       {
-         DataOutputStream writer = new DataOutputStream(output);
-
-         Utility.saveInt(writer, x);
-         Utility.saveInt(writer, y);
-         Utility.saveInt(writer, rx);
-         Utility.saveInt(writer, ry);
-         Utility.saveInt(writer, maxEventAge);
+         Utility.saveInt(output, x);
+         Utility.saveInt(output, y);
+         Utility.saveInt(output, rx);
+         Utility.saveInt(output, ry);
+         Utility.saveInt(output, maxEventAge);
          morphognostic.save(output);
-         writer.flush();
       }
 
 
-      public void load(FileInputStream input) throws IOException
+      public void load(DataInputStream input) throws IOException
       {
-         DataInputStream reader = new DataInputStream(input);
-
-         x             = Utility.loadInt(reader);
-         y             = Utility.loadInt(reader);
-         rx            = Utility.loadInt(reader);
-         ry            = Utility.loadInt(reader);
-         maxEventAge   = Utility.loadInt(reader);
+         x             = Utility.loadInt(input);
+         y             = Utility.loadInt(input);
+         rx            = Utility.loadInt(input);
+         ry            = Utility.loadInt(input);
+         maxEventAge   = Utility.loadInt(input);
          morphognostic = Morphognostic.load(input);
       }
    }
@@ -717,68 +712,66 @@ public class Worm
    // Save worm to file.
    public void save(String filename) throws IOException
    {
-      FileOutputStream output;
+      DataOutputStream output;
 
       try
       {
-         output = new FileOutputStream(new File(filename));
+         output = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
       }
       catch (Exception e)
       {
          throw new IOException("Cannot open output file " + filename + ":" + e.getMessage());
       }
       save(output);
+      output.flush();
       output.close();
    }
 
 
    // Save worm.
-   public void save(FileOutputStream output) throws IOException
+   public void save(DataOutputStream output) throws IOException
    {
       headSegment.save(output);
       for (BodySegment segment : bodySegments)
       {
          segment.save(output);
       }
-      DataOutputStream writer = new DataOutputStream(output);
-      Utility.saveInt(writer, eventTime);
-      Utility.saveInt(writer, headMetamorphs.size());
+      Utility.saveInt(output, eventTime);
+      Utility.saveInt(output, headMetamorphs.size());
       for (Map.Entry < Integer, List < Metamorph >> entry : headMetamorphs.entrySet())
       {
          int morphognosticHash = entry.getKey();
-         Utility.saveInt(writer, morphognosticHash);
+         Utility.saveInt(output, morphognosticHash);
          List<Metamorph> metamorphList = entry.getValue();
-         Utility.saveInt(writer, metamorphList.size());
+         Utility.saveInt(output, metamorphList.size());
          for (Metamorph m : metamorphList)
          {
             m.save(output);
          }
       }
-      Utility.saveInt(writer, bodyMetamorphs.size());
+      Utility.saveInt(output, bodyMetamorphs.size());
       for (Map.Entry < Integer, List < Metamorph >> entry : bodyMetamorphs.entrySet())
       {
          int morphognosticHash = entry.getKey();
-         Utility.saveInt(writer, morphognosticHash);
+         Utility.saveInt(output, morphognosticHash);
          List<Metamorph> metamorphList = entry.getValue();
-         Utility.saveInt(writer, metamorphList.size());
+         Utility.saveInt(output, metamorphList.size());
          for (Metamorph m : metamorphList)
          {
             m.save(output);
          }
       }
-      Utility.saveInt(writer, driver);
-      writer.flush();
    }
 
 
    // Load worm from file.
    public void load(String filename) throws IOException
    {
-      FileInputStream input;
+      DataInputStream input;
 
       try
       {
-         input = new FileInputStream(new File(filename));
+         input = new DataInputStream(new BufferedInputStream(new FileInputStream(new File(filename))));
       }
       catch (Exception e)
       {
@@ -790,21 +783,20 @@ public class Worm
 
 
    // Load worm.
-   public void load(FileInputStream input) throws IOException
+   public void load(DataInputStream input) throws IOException
    {
       headSegment.load(input);
       for (BodySegment segment : bodySegments)
       {
          segment.load(input);
       }
-      DataInputStream reader = new DataInputStream(input);
-      eventTime = Utility.loadInt(reader);
+      eventTime = Utility.loadInt(input);
       headMetamorphs.clear();
-      int n = Utility.loadInt(reader);
+      int n = Utility.loadInt(input);
       for (int i = 0; i < n; i++)
       {
-         int morphognosticHash = Utility.loadInt(reader);
-         int n2 = Utility.loadInt(reader);
+         int morphognosticHash = Utility.loadInt(input);
+         int n2 = Utility.loadInt(input);
          ArrayList<Metamorph> metamorphList = new ArrayList<Metamorph>();
          for (int j = 0; j < n2; j++)
          {
@@ -813,11 +805,11 @@ public class Worm
          headMetamorphs.put(morphognosticHash, metamorphList);
       }
       bodyMetamorphs.clear();
-      n = Utility.loadInt(reader);
+      n = Utility.loadInt(input);
       for (int i = 0; i < n; i++)
       {
-         int morphognosticHash = Utility.loadInt(reader);
-         int n2 = Utility.loadInt(reader);
+         int morphognosticHash = Utility.loadInt(input);
+         int n2 = Utility.loadInt(input);
          ArrayList<Metamorph> metamorphList = new ArrayList<Metamorph>();
          for (int j = 0; j < n2; j++)
          {
@@ -829,8 +821,6 @@ public class Worm
       initHeadMetamorphWekaNN(morphognostic);
       morphognostic = bodySegments[0].morphognostic;
       initBodyMetamorphWekaNN(morphognostic);
-      driver = Utility.loadInt(reader);
-      setDriver(driver);
    }
 
 
@@ -866,7 +856,7 @@ public class Worm
             break;
 
          case Agar.BLUE_FOOD:
-            ventral = 1.05;
+            ventral = 1.06;
             break;
          }
          if (DORSAL_SMB_MUSCLE_AMPLIFIER_OVERRIDE != -1.0)
@@ -1506,7 +1496,7 @@ public class Worm
       {
          throw new IOException("Cannot open output file " + HEAD_NN_DATASET_SAVE_FILE_NAME + ":" + e.getMessage());
       }
-      PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
+      PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(output)));
       boolean     header = true;
       for (List<Metamorph> metamorphList : headMetamorphs.values())
       {
@@ -1536,6 +1526,7 @@ public class Worm
             writer.println(csv);
          }
       }
+      writer.flush();
       output.close();
    }
 
@@ -1553,7 +1544,7 @@ public class Worm
       {
          throw new IOException("Cannot open output file " + BODY_NN_DATASET_SAVE_FILE_NAME + ":" + e.getMessage());
       }
-      PrintWriter writer = new PrintWriter(new OutputStreamWriter(output));
+      PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(output)));
       boolean     header = true;
       for (List<Metamorph> metamorphList : bodyMetamorphs.values())
       {
@@ -1583,6 +1574,7 @@ public class Worm
             writer.println(csv);
          }
       }
+      writer.flush();
       output.close();
    }
 

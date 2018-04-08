@@ -26,13 +26,14 @@
 
 package openworm.morphognosis.wormworx;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.security.SecureRandom;
 import javax.swing.UIManager;
 
@@ -180,14 +181,17 @@ public class Main
    public void save(FileOutputStream output) throws IOException
    {
       // Save agar.
-      DataOutputStream writer = new DataOutputStream(output);
+      DataOutputStream writer = new DataOutputStream(new BufferedOutputStream(output));
 
       Utility.saveInt(writer, Agar.SIZE.width);
       Utility.saveInt(writer, Agar.SIZE.height);
-      agar.save(output);
+      agar.save(writer);
 
       // Save worm.
-      worm.save(output);
+      worm.save(writer);
+
+      // Flush stream.
+      writer.flush();
    }
 
 
@@ -213,17 +217,17 @@ public class Main
    public void load(FileInputStream input) throws IOException
    {
       // Load agar.
-      DataInputStream reader = new DataInputStream(input);
+      DataInputStream reader = new DataInputStream(new BufferedInputStream(input));
       int             width  = Utility.loadInt(reader);
       int             height = Utility.loadInt(reader);
 
       Agar.resize(width, height);
       agar = new Agar(foodColor);
-      agar.load(input);
+      agar.load(reader);
 
       // Load worm.
       worm = new Worm(agar, randomSeed);
-      worm.load(input);
+      worm.load(reader);
    }
 
 
