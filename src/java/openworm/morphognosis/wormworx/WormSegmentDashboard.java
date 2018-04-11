@@ -28,7 +28,7 @@ public class WormSegmentDashboard extends JFrame
       this.wormSegment = wormSegment;
       this.display     = display;
 
-      setTitle("Worm segment " + wormSegment.number);
+      setTitle("Segment " + wormSegment.number);
       addWindowListener(new WindowAdapter()
                         {
                            public void windowClosing(WindowEvent e) { close(); }

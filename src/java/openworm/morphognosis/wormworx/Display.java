@@ -324,6 +324,9 @@ public class Display extends JFrame
             int width  = Agar.GRID_SIZE.width;
             int height = Agar.GRID_SIZE.height;
 
+            // Clear message.
+            controls.messageText.setText("");
+
             // Selecting worm segment?
             x = (int)((double)evt.getX() / Agar.CELL_WIDTH);
             y = height - (int)((double)evt.getY() / Agar.CELL_HEIGHT) - 1;
@@ -439,7 +442,7 @@ public class Display extends JFrame
          panel.add(stepCounter);
          add(panel, BorderLayout.NORTH);
          panel       = new JPanel();
-         messageText = new JTextField("", 40);
+         messageText = new JTextField("Click worm for dashboards", 60);
          panel.add(messageText);
          add(panel, BorderLayout.SOUTH);
          steps = 0;
