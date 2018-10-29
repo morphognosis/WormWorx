@@ -175,6 +175,7 @@ public class Agar
             Utility.saveInt(output, wormCells[x][y]);
          }
       }
+      output.flush();
    }
 
 

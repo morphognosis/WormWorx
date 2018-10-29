@@ -7,6 +7,7 @@ extern "C"
     JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_init(JNIEnv * env, jobject obj);
 	JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_setSteeringSynapseWeights(JNIEnv * env, jobject obj, jdoubleArray weights);
 	JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_step(JNIEnv * env, jobject obj, jdouble salt_stimulus);
+	JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_stepback(JNIEnv * env, jobject obj);
 	JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_getSteeringActivations(JNIEnv * env, jobject obj, jdoubleArray activations);
 	JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_getDorsalMotorActivations(JNIEnv * env, jobject obj, jdoubleArray activations);
 	JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_getVentralMotorActivations(JNIEnv * env, jobject obj, jdoubleArray activations);
@@ -39,6 +40,10 @@ JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_step(JNIEnv *
     step(salt_stimulus);
 }
 
+JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_stepback(JNIEnv * env, jobject obj)
+{
+    stepback();
+}
 
 JNIEXPORT void JNICALL Java_openworm_morphognosis_wormworx_Wormsim_getSteeringActivations(JNIEnv * env, jobject obj, jdoubleArray activations)
 {

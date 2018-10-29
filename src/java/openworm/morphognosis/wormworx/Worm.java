@@ -427,6 +427,7 @@ public class Worm
          Utility.saveInt(output, ry);
          Utility.saveInt(output, maxEventAge);
          morphognostic.save(output);
+         output.flush();
       }
 
 

@@ -441,6 +441,14 @@ void step(double salt_stimulus)
 	}
 }
 
+// Undo step.
+void stepback()
+{
+
+	// Rewind time.
+	tout -= DELTAT;
+}
+
 /*
 *--------------------------------------------------------------------
 *Terminate
